@@ -54,3 +54,11 @@ Kod ini ditulis khusus untuk tugasan permainan interaktif. Emoji sistem digunaka
 
 
 Kemas kini terkini: fullscreen fokus pada ruang permainan sahaja; webcam dipaparkan sebaik diaktifkan; jawapan betul bergerak automatik ke soalan seterusnya; jawapan salah mengulang automatik soalan yang sama; pokok Misi 2 digayakan lebih kartun dan mesra MBPK.
+
+
+### Kemas kini Misi 2 — Master v1.16
+- Pada iPad/laptop dengan kawasan permainan yang cukup lebar, pokok berada di kiri dan bakul terbuka di kanan.
+- Bakul tidak mempunyai kotak berbingkai. Bahagian dalam bakul dan bilangan buah yang dimasukkan kelihatan, sehingga 10 buah.
+- Pada telefon sempit, pokok berada di atas dan bakul di bawah supaya kedua-duanya boleh dipilih dengan selesa.
+- Logik Misi 1–3, julat 1–3/1–5/1–10, webcam dan confetti tidak diubah.
+- Untuk GitHub Pages, muat naik semua lima fail (index.html, styles.css, game.js, tree-cartoon.svg, README.md) ke folder root repo dan gantikan fail lama. URL CSS/JS mempunyai versi ?v=116 untuk mengurangkan isu cache.

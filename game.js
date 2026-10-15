@@ -201,34 +201,35 @@ function renderLevel2() {
   const fruitCount = Math.min(Math.max(state.max + 2, n + 1), 12);
   const collected = state.collected;
   const collectedSet = new Set(collected);
-  board.innerHTML = `<div class="board-content orchard-scene">
+  board.innerHTML = `<div class="board-content orchard-scene orchard-basket-v116">
     <span class="board-label">🤲 Seret atau pilih buah dari pokok ke bakul</span>
     <div class="target-number" aria-label="Nombor ${n}">${n}</div>
     <div class="orchard-tree" aria-label="Pokok buah">
       <img class="tree-image" src="tree-cartoon.svg" alt="Pokok buah kartun" draggable="false">
       <div class="fruit-tree-zone" aria-label="Buah pada pokok">${Array.from({ length: fruitCount }, (_, i) => `<div data-slot="${i}" data-gesture="fruit" data-fruit="${i}" class="fruit-token ${collectedSet.has(i) ? "used" : ""} ${state.selectedFruit === i ? "selected" : ""}" role="button" tabindex="${collectedSet.has(i) || state.answered ? "-1" : "0"}" aria-label="Pilih buah nombor ${i+1}" aria-disabled="${collectedSet.has(i) || state.answered}"><span class="fruit-emoji" aria-hidden="true">${fruit()}</span></div>`).join("")}</div>
     </div>
-    <span class="tree-helper">Petik buah dari pokok dan bawa ke bakul.</span>
     <div class="orchard-basket-area">
-      <div class="basket-zone basket-open" data-gesture="basket" role="button" tabindex="0" aria-label="Masukkan buah yang dipilih ke dalam bakul">
-        <span class="basket-count">${collected.length} / ${n}</span>
-        <span class="basket-open-label">Masukkan buah ke dalam bakul</span>
+      <div class="basket-zone basket-open basket-v116" data-gesture="basket" role="button" tabindex="0" aria-label="Masukkan buah yang dipilih ke dalam bakul. Kini ${collected.length} daripada ${n} buah.">
+        <span class="basket-count" aria-live="polite">${collected.length} / ${n}</span>
         <div class="basket-visual" aria-hidden="true">
           <span class="basket-handle basket-handle-left"></span>
           <span class="basket-handle basket-handle-right"></span>
+          <span class="basket-back"></span>
+          <span class="basket-opening"></span>
           <span class="basket-rim"></span>
-          <span class="basket-pocket">
-            <span class="basket-items" aria-label="${collected.length} buah dalam bakul">${collected.map(() => `<span class="basket-fruit">${fruit()}</span>`).join("")}</span>
-          </span>
-          <span class="basket-body"></span>
+          <span class="basket-fruit-layer">${collected.map(() => `<span class="basket-fruit">${fruit()}</span>`).join("")}</span>
+          <span class="basket-front"></span>
         </div>
+        <span class="basket-tap-label">🧺 Letakkan buah di sini</span>
       </div>
       <div class="board-footer">
         <button type="button" class="secondary-button" data-gesture="undo" ${collected.length===0 || state.answered ? "disabled" : ""}>↶ Keluarkan satu buah</button>
       </div>
     </div>
+    <span class="tree-helper">Petik buah dari pokok dan bawa ke bakul.</span>
   </div>`;
 }
+
 function renderLevel3() {
   const n = currentTarget();
   setInstruction(`Cari kumpulan yang mempunyai ${n} biji buah.`);
