@@ -51,3 +51,7 @@ Permainan interaktif HTML/CSS/JavaScript bagi latihan menghubungkan nombor 1–5
 - `game.js` — logik permainan, rekod dan pengesanan MediaPipe
 
 Kod ini ditulis khusus untuk tugasan permainan interaktif. Emoji sistem digunakan untuk objek buah dan tidak memerlukan fail imej tambahan.
+
+
+## Mod Fullscreen Webcam untuk MBPK (kemas kini)
+Dalam mod webcam, buka **Fullscreen game** untuk memaparkan video kamera di seluruh skrin permainan. Arahan, nombor/buah/bakul, maklum balas, butang **Bantuan**, **Cuba soalan ini lagi**, **Soalan seterusnya**, dan **Keluar fullscreen** terletak di atas video. Gunakan Point & Select (tunggu bulatan penuh), Pinch & Drag (cubit pada butang), atau sentuhan/mouse. Butang Seterusnya hanya muncul selepas jawapan berjaya dan boleh dipilih menggunakan tangan. Paparan biasa Version 1 tidak berubah. Pada peranti yang menyekat Fullscreen API, mod skrin hampir penuh digunakan.

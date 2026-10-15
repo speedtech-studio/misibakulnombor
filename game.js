@@ -65,6 +65,7 @@ function updateStats() {
 function updateProgress() {
   const total = targetSequence().length;
   $("roundText").textContent = `Soalan ${Math.min(state.round + 1, total)} / ${total}`;
+  $("fullscreenRound").textContent = ` · Soalan ${Math.min(state.round + 1, total)} / ${total}`;
   $("progressTrack").innerHTML = Array.from({ length: total }, (_, i) => `<span class="progress-pip ${i < state.round ? "done" : i === state.round ? "current" : ""}"></span>`).join("");
 }
 function updateTabs() {
@@ -141,6 +142,7 @@ function renderFinished() {
   const first = byLevel.filter(r => r.firstTry === "Ya").length;
   setInstruction(`Tahniah! Kamu sudah mencuba ${LEVELS[state.level].title.toLowerCase()}.`);
   $("roundText").textContent = "Misi selesai";
+  $("fullscreenRound").textContent = " · Misi selesai";
   $("progressTrack").innerHTML = targetSequence().map(() => '<span class="progress-pip done"></span>').join("");
   $("nextBtn").hidden = false;
   $("nextBtn").textContent = state.level===3 ? "Main dari Misi 1 ↻" : "Pergi ke misi seterusnya →";
@@ -238,7 +240,16 @@ function advance() {
   else resetQuestion();
 }
 function handleAction(target) {
-  if (!target || !target.dataset || state.answered) return;
+  if (!target || !target.dataset || target.disabled || target.getAttribute("aria-disabled") === "true") return;
+  // Navigation, help and sound stay available after the correct answer and on the end screen.
+  switch (target.dataset.gesture) {
+    case "next": advance(); return;
+    case "retry": if (!state.answered) resetQuestion({preserveErrors:true}); return;
+    case "speak": speak($("instruction").textContent); return;
+    case "hint": if (!state.answered && state.round < targetSequence().length) { showHint(); speak($("hintText").textContent); } return;
+    case "fullscreen": void toggleFullscreen(); return;
+  }
+  if (state.answered) return;
   switch (target.dataset.gesture) {
     case "number": case "group": answerChoice(target.dataset.value); break;
     case "fruit": selectFruit(Number(target.dataset.fruit)); break;
@@ -353,9 +364,16 @@ async function startCamera() {
   } finally { h.busy=false; $("cameraBtn").disabled=false; }
 }
 function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function isGameFullscreen() {
+  const stage=$("gameStage");
+  return fullscreenElement() === stage || stage.classList.contains("theater-mode");
+}
 function gestureTargetAt(x,y){
   const node=document.elementFromPoint(x,y)?.closest?.("[data-gesture]");
-  return node && board.contains(node) && !node.hasAttribute("disabled") && node.getAttribute("aria-disabled")!=="true" ? node:null;
+  // Normally gestures stay within the board. In fullscreen, allow the buttons on
+  // top of the webcam too (Next, Retry, Hint, Sound, Exit fullscreen).
+  const permitted=isGameFullscreen() ? $("gameStage") : board;
+  return node && permitted.contains(node) && !node.hasAttribute("disabled") && !node.hidden && node.getAttribute("aria-disabled")!=="true" ? node:null;
 }
 function detectLoop(now) {
   const h=state.hand;
@@ -370,8 +388,10 @@ function detectLoop(now) {
     if(!result.landmarks?.length) { closeHandCursor();cameraMessage("Tangan belum dikesan. Letakkan satu tangan di hadapan kamera.");return; }
     const l=result.landmarks[0];
     const tip=l[8],thumb=l[4];
-    // Match pointer coordinates to the mirrored webcam background with object-fit:cover.
-    const r=board.getBoundingClientRect();
+    // In fullscreen the webcam covers the entire game, including its controls.
+    // Use the actual webcam cover dimensions for precise cursor mapping.
+    const fullscreen=isGameFullscreen();
+    const r=(fullscreen ? $("gameStage") : board).getBoundingClientRect();
     const scale=Math.max(r.width/v.videoWidth,r.height/v.videoHeight);
     const coverWidth=v.videoWidth*scale, coverHeight=v.videoHeight*scale;
     const cropX=(coverWidth-r.width)/2, cropY=(coverHeight-r.height)/2;
@@ -381,8 +401,10 @@ function detectLoop(now) {
     h.cursorX=h.cursorX===null?wantedX:h.cursorX+(wantedX-h.cursorX)*alpha;
     h.cursorY=h.cursorY===null?wantedY:h.cursorY+(wantedY-h.cursorY)*alpha;
     cursor.hidden=false;
-    cursor.style.left=(h.cursorX-r.left)+"px";
-    cursor.style.top=(h.cursorY-r.top)+"px";
+    // The pointer belongs to boardWrap ordinarily, but to the viewport in fullscreen.
+    const local=boardWrap.getBoundingClientRect();
+    cursor.style.left=(fullscreen?h.cursorX:h.cursorX-local.left)+"px";
+    cursor.style.top=(fullscreen?h.cursorY:h.cursorY-local.top)+"px";
     h.lastLandmarks=l;
     const refSize=Math.max(.055,distance(l[0],l[9]));
     const pinchRatio=distance(thumb,tip)/refSize;
@@ -398,7 +420,7 @@ function processDwell(now) {
   const h=state.hand;
   const el=gestureTargetAt(h.cursorX,h.cursorY);
   const key=el ? `${el.dataset.gesture}:${el.dataset.value??el.dataset.fruit??""}` : "";
-  if(!key || state.answered) {h.hoverKey="";cursor.style.setProperty("--progress","0%");return;}
+  if(!key) {h.hoverKey="";cursor.style.setProperty("--progress","0%");return;}
   if(key!==h.hoverKey){h.hoverKey=key;h.hoverSince=now;cursor.style.setProperty("--progress","0%");return;}
   const pct=Math.min(100,Math.max(0,((now-h.hoverSince)/1400)*100));
   cursor.style.setProperty("--progress",pct+"%");
@@ -414,7 +436,7 @@ function processPinch(ratio,now) {
   cursor.style.setProperty("--progress",h.pinched?"100%":"0%");
   if(closing) {
     h.pinched=true;
-    if(now<h.cooldownUntil||state.answered) return;
+    if(now<h.cooldownUntil) return;
     const el=gestureTargetAt(h.cursorX,h.cursorY);
     if(el && el.dataset.gesture==="fruit" && state.level===2) {
       h.dragId=Number(el.dataset.fruit);$("carriedFruit").textContent=fruit();
@@ -482,11 +504,22 @@ function syncFullscreenButton(){
   btn.classList.toggle("is-active",active);
   btn.setAttribute("aria-pressed",String(active));
   btn.textContent=active?"✕ Keluar fullscreen":"⛶ Fullscreen game";
+  // Keep the hand pointer visible ABOVE the webcam and fullscreen controls.
+  if(active) stage.appendChild(cursor);
+  else boardWrap.appendChild(cursor);
+  // The camera mapping uses a different viewport when fullscreen is active.
+  if(state.hand.fullscreenMapping !== active) {
+    state.hand.fullscreenMapping=active;
+    state.hand.cursorX=null; state.hand.cursorY=null;
+    state.hand.hoverKey=""; state.hand.hoverSince=0;
+    cursor.hidden=true;
+  }
 }
 // ---------- App controls ----------
 document.querySelectorAll(".mode-btn").forEach(b=>b.addEventListener("click",()=>updateMode(b.dataset.mode)));
 $("cameraBtn").addEventListener("click",()=>state.hand.active?stopCamera():startCamera());
 $("hintBtn").addEventListener("click",()=>{if(state.answered)return;showHint();speak($("hintText").textContent)});
+$("gameHintBtn").addEventListener("click",()=>handleAction($("gameHintBtn")));
 $("speakBtn").addEventListener("click",()=>speak($("instruction").textContent));
 $("voiceBtn").addEventListener("click",()=>{
   state.sound=!state.sound;

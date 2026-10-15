@@ -26,3 +26,117 @@
 body.game-theater{overflow:hidden}
 @media(max-width:740px){.game-toolbar{align-items:center}.game-toolbar-label{font-size:.66rem}.fullscreen-btn{font-size:.82rem;min-height:44px;padding:9px 12px}}
 @media(max-width:490px){.game-card:fullscreen,.game-card.theater-mode{padding:9px}.game-card:fullscreen .game-board,.game-card.theater-mode .game-board{min-height:360px}.board-wrap.webcam-live .webcam-badge{font-size:.6rem;padding:6px 9px}}
+
+
+/* Fullscreen improvement only: webcam fills the ENTIRE stage; all game controls
+   remain superimposed and usable via pointer, touch, keyboard or hand gestures.
+   Normal Version 1 layout is intentionally unchanged. */
+.fullscreen-round,.fullscreen-hint{display:none}
+.game-card:fullscreen,.game-card:-webkit-full-screen,.game-card.theater-mode{
+  position:relative; isolation:isolate; overflow:hidden; background:#e5f4ed;
+  height:100vh; height:100dvh; max-height:100dvh; padding:clamp(8px,1.5vh,16px);
+  justify-content:space-between;
+}
+.game-card:fullscreen .board-camera,.game-card:-webkit-full-screen .board-camera,.game-card.theater-mode .board-camera{
+  position:fixed; inset:0; width:100vw; height:100vh; height:100dvh;
+  object-fit:cover; transform:scaleX(-1); z-index:0; pointer-events:none;
+}
+.game-card:fullscreen .game-toolbar,.game-card:fullscreen .instruction-box,
+.game-card:fullscreen .board-wrap,.game-card:fullscreen .hint-panel,
+.game-card:fullscreen .feedback,.game-card:fullscreen .game-actions,
+.game-card:-webkit-full-screen .game-toolbar,.game-card:-webkit-full-screen .instruction-box,
+.game-card:-webkit-full-screen .board-wrap,.game-card:-webkit-full-screen .hint-panel,
+.game-card:-webkit-full-screen .feedback,.game-card:-webkit-full-screen .game-actions,
+.game-card.theater-mode .game-toolbar,.game-card.theater-mode .instruction-box,
+.game-card.theater-mode .board-wrap,.game-card.theater-mode .hint-panel,
+.game-card.theater-mode .feedback,.game-card.theater-mode .game-actions {position:relative;z-index:2;}
+.game-card:fullscreen .game-toolbar,.game-card:-webkit-full-screen .game-toolbar,.game-card.theater-mode .game-toolbar{
+  min-height:48px; margin:0 0 8px; flex:none; background:#ffffffdd;
+  border-radius:15px; padding:5px 9px;
+}
+.game-card:fullscreen .fullscreen-round,.game-card:-webkit-full-screen .fullscreen-round,.game-card.theater-mode .fullscreen-round{display:inline}
+.game-card:fullscreen .instruction-box,.game-card:-webkit-full-screen .instruction-box,.game-card.theater-mode .instruction-box{
+  margin:0 0 8px; flex:none; padding:10px 14px; background:#fff9e9f0;
+  border:2px solid #ffe1ab;
+}
+.game-card:fullscreen .instruction-box p,.game-card:-webkit-full-screen .instruction-box p,.game-card.theater-mode .instruction-box p{font-size:clamp(1.1rem,2.7vw,2.1rem)}
+.game-card:fullscreen .board-wrap,.game-card:-webkit-full-screen .board-wrap,.game-card.theater-mode .board-wrap{
+  min-height:0; flex:1 1 auto; width:100%; position:relative;
+}
+.game-card:fullscreen .game-board,.game-card:-webkit-full-screen .game-board,.game-card.theater-mode .game-board{
+  min-height:0; height:100%; border:0; padding:10px; background:transparent;
+}
+.game-card:fullscreen .game-board:before,.game-card:fullscreen .game-board:after,
+.game-card:-webkit-full-screen .game-board:before,.game-card:-webkit-full-screen .game-board:after,
+.game-card.theater-mode .game-board:before,.game-card.theater-mode .game-board:after {display:none}
+.game-card:fullscreen .board-wrap.webcam-live .game-board,
+.game-card:-webkit-full-screen .board-wrap.webcam-live .game-board,
+.game-card.theater-mode .board-wrap.webcam-live .game-board {border:0;background:transparent}
+.game-card:fullscreen .board-content,.game-card:-webkit-full-screen .board-content,.game-card.theater-mode .board-content{
+  min-height:0; height:100%; gap:clamp(6px,1.3vh,15px); justify-content:center;
+}
+.game-card:fullscreen .fruit-cluster,.game-card:-webkit-full-screen .fruit-cluster,.game-card.theater-mode .fruit-cluster {margin:5px auto; min-height:0}
+.game-card:fullscreen .big-fruit,.game-card:-webkit-full-screen .big-fruit,.game-card.theater-mode .big-fruit{
+  width:clamp(65px,11vmin,108px);height:clamp(65px,11vmin,108px)
+}
+.game-card:fullscreen .fruit-token,.game-card:-webkit-full-screen .fruit-token,.game-card.theater-mode .fruit-token{
+  width:clamp(64px,10vmin,85px);height:clamp(64px,10vmin,85px)
+}
+.game-card:fullscreen .fruit-shelf,.game-card:-webkit-full-screen .fruit-shelf,.game-card.theater-mode .fruit-shelf{gap:clamp(5px,1vw,12px);max-width:min(92vw,850px)}
+.game-card:fullscreen .target-number,.game-card:-webkit-full-screen .target-number,.game-card.theater-mode .target-number{font-size:clamp(2.1rem,5.5vmin,3.2rem);padding:5px 20px}
+.game-card:fullscreen .basket-zone,.game-card:-webkit-full-screen .basket-zone,.game-card.theater-mode .basket-zone {min-height:clamp(88px,15vh,135px)}
+.game-card:fullscreen .group-btn,.game-card:-webkit-full-screen .group-btn,.game-card.theater-mode .group-btn{min-height:clamp(100px,17vh,150px)}
+.game-card:fullscreen .board-footer,.game-card:-webkit-full-screen .board-footer,.game-card.theater-mode .board-footer{gap:10px}
+.game-card:fullscreen .hint-panel,.game-card:-webkit-full-screen .hint-panel,.game-card.theater-mode .hint-panel {background:#eef6fff2;margin:6px 0 0;padding:8px 14px;flex:none}
+.game-card:fullscreen .feedback,.game-card:-webkit-full-screen .feedback,.game-card.theater-mode .feedback {
+  margin:7px 0 0;min-height:42px;padding:8px 13px;flex:none;
+  background:#f2f9eff0; border:1px solid #cbe9d2;
+}
+.game-card:fullscreen .feedback.error,.game-card:-webkit-full-screen .feedback.error,.game-card.theater-mode .feedback.error {background:#fff0e4f0}
+.game-card:fullscreen .feedback.success,.game-card:-webkit-full-screen .feedback.success,.game-card.theater-mode .feedback.success {background:#ddf6e6f0}
+.game-card:fullscreen .game-actions,.game-card:-webkit-full-screen .game-actions,.game-card.theater-mode .game-actions{
+  flex:none; margin-top:8px; min-height:70px; padding:8px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:#ffffffea;border-radius:18px;border:1px solid #d6e5d9;
+}
+.game-card:fullscreen .fullscreen-hint,.game-card:-webkit-full-screen .fullscreen-hint,.game-card.theater-mode .fullscreen-hint{
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.game-card:fullscreen .game-actions button,.game-card:-webkit-full-screen .game-actions button,.game-card.theater-mode .game-actions button{
+  min-height:58px; padding:12px 20px; font-size:clamp(1rem,2.2vmin,1.35rem);
+  border-radius:16px; border-width:2px;
+}
+.game-card:fullscreen #nextBtn:not([hidden]),.game-card:-webkit-full-screen #nextBtn:not([hidden]),.game-card.theater-mode #nextBtn:not([hidden]) {
+  margin-left:auto;background:#187b4e;box-shadow:0 4px 0 #0b5030;
+  min-width:clamp(190px,31vw,320px);font-weight:950;
+}
+.game-card:fullscreen .hand-cursor,.game-card:-webkit-full-screen .hand-cursor,.game-card.theater-mode .hand-cursor{
+  position:fixed;z-index:10;
+}
+@media(max-height:700px){
+  .game-card:fullscreen .game-toolbar,.game-card.theater-mode .game-toolbar {min-height:42px}
+  .game-card:fullscreen .game-actions,.game-card.theater-mode .game-actions{min-height:56px}
+  .game-card:fullscreen .game-actions button,.game-card.theater-mode .game-actions button{min-height:45px;padding:7px 12px}
+  .game-card:fullscreen .board-label,.game-card.theater-mode .board-label{padding:5px 9px}
+  .game-card:fullscreen .basket-zone,.game-card.theater-mode .basket-zone{min-height:90px;padding:5px 14px}
+  .game-card:fullscreen .basket-zone .basket-graphic,.game-card.theater-mode .basket-zone .basket-graphic{font-size:3rem}
+}
+@media(max-width:580px){
+  .game-card:fullscreen .game-actions,.game-card.theater-mode .game-actions{flex-wrap:wrap;justify-content:center}
+  .game-card:fullscreen .game-actions button,.game-card.theater-mode .game-actions button{flex:1 1 120px;min-height:50px;padding:8px}
+  .game-card:fullscreen #nextBtn:not([hidden]),.game-card.theater-mode #nextBtn:not([hidden]){flex:1 1 100%;min-width:0}
+  .game-card:fullscreen .game-toolbar-label,.game-card.theater-mode .game-toolbar-label{font-size:.62rem}
+  .game-card:fullscreen .instruction-box,.game-card.theater-mode .instruction-box{padding:6px 8px}
+  .game-card:fullscreen .big-fruit,.game-card.theater-mode .big-fruit{width:clamp(50px,16vmin,82px);height:clamp(50px,16vmin,82px)}
+  .game-card:fullscreen .fruit-token,.game-card.theater-mode .fruit-token{width:clamp(48px,15vmin,75px);height:clamp(48px,15vmin,75px)}
+}
+
+/* Explicit stacking: camera stays BEHIND the toolbar, instruction and actions. */
+.game-card:fullscreen .board-wrap,.game-card:-webkit-full-screen .board-wrap,.game-card.theater-mode .board-wrap{z-index:1}
+.game-card:fullscreen .game-toolbar,.game-card:fullscreen .instruction-box,
+.game-card:fullscreen .hint-panel,.game-card:fullscreen .feedback,.game-card:fullscreen .game-actions,
+.game-card:-webkit-full-screen .game-toolbar,.game-card:-webkit-full-screen .instruction-box,
+.game-card:-webkit-full-screen .hint-panel,.game-card:-webkit-full-screen .feedback,.game-card:-webkit-full-screen .game-actions,
+.game-card.theater-mode .game-toolbar,.game-card.theater-mode .instruction-box,
+.game-card.theater-mode .hint-panel,.game-card.theater-mode .feedback,.game-card.theater-mode .game-actions{z-index:15}
+.game-card:fullscreen>.hand-cursor,.game-card:-webkit-full-screen>.hand-cursor,.game-card.theater-mode>.hand-cursor{position:fixed;z-index:25}
