@@ -210,10 +210,18 @@ function renderLevel2() {
     </div>
     <span class="tree-helper">Petik buah dari pokok dan bawa ke bakul.</span>
     <div class="orchard-basket-area">
-      <div class="basket-zone" data-gesture="basket" role="button" tabindex="0" aria-label="Masukkan buah yang dipilih ke bakul">
-         <span class="basket-count">${collected.length} / ${n}</span>
-         <span class="basket-graphic" aria-hidden="true">🧺</span>
-         <span class="basket-items" aria-label="${collected.length} buah dalam bakul">${collected.map(() => fruit()).join(" ")}</span>
+      <div class="basket-zone basket-open" data-gesture="basket" role="button" tabindex="0" aria-label="Masukkan buah yang dipilih ke dalam bakul">
+        <span class="basket-count">${collected.length} / ${n}</span>
+        <span class="basket-open-label">Masukkan buah ke dalam bakul</span>
+        <div class="basket-visual" aria-hidden="true">
+          <span class="basket-handle basket-handle-left"></span>
+          <span class="basket-handle basket-handle-right"></span>
+          <span class="basket-rim"></span>
+          <span class="basket-pocket">
+            <span class="basket-items" aria-label="${collected.length} buah dalam bakul">${collected.map(() => `<span class="basket-fruit">${fruit()}</span>`).join("")}</span>
+          </span>
+          <span class="basket-body"></span>
+        </div>
       </div>
       <div class="board-footer">
         <button type="button" class="secondary-button" data-gesture="undo" ${collected.length===0 || state.answered ? "disabled" : ""}>↶ Keluarkan satu buah</button>
