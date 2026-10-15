@@ -1,4 +1,6 @@
-# MISI BAKUL NOMBOR
+# MISI BAKUL NOMBOR — Gaya Version 1 + Webcam Latar + Fullscreen Game
+
+Versi ini mengekalkan reka bentuk asal Version 1, dengan sasaran nombor, buah dan bakul yang lebih besar. Dalam mod webcam, video kamera (termasuk tangan dan latar sebenar) memenuhi bahagian belakang permainan seperti contoh webcam quiz. **Tiada pemisahan latar, rangka tangan, atau UI skor/nyawa Version 3.**
 
 Permainan interaktif HTML/CSS/JavaScript bagi latihan menghubungkan nombor 1–5 dengan kuantiti objek. Direka dengan pilihan kawalan sentuhan/mouse, `Point & Select`, dan `Pinch & Drag` menggunakan MediaPipe Hand Landmarker.
 
@@ -14,10 +16,11 @@ Permainan interaktif HTML/CSS/JavaScript bagi latihan menghubungkan nombor 1–5
 - **Misi 2 — Isi Bakul:** ambil buah dan masukkan ke bakul; tekan **Semak bakul**. Pada skrin sentuh/mouse, ketik buah lalu bakul atau seret buah ke bakul. Dalam mod Point & Select, halakan jari 1.4 saat pada buah kemudian bakul. Dalam mod Pinch & Drag, cubit pada buah, gerakkan tangan, kemudian lepaskan di bakul. Jika gerakan sukar, pilih buah lalu cubit pada bakul.
 - **Misi 3 — Padankan:** cari kumpulan buah yang sama bilangannya dengan simbol nombor.
 - Jika webcam gagal, pilih mod **Sentuhan / mouse**. Semua misi boleh dilakukan tanpa webcam.
+- Klik **⛶ Fullscreen game** di dalam kotak permainan untuk membesarkan permainan sahaja; tekan **✕ Keluar fullscreen** atau `Esc` untuk kembali. Sesetengah browser telefon menggunakan paparan imersif yang tidak semestinya menyembunyikan bar browser.
 
 ## Kamera dan internet
 
-- Kamera memerlukan kebenaran pengguna dan persekitaran **HTTPS** atau **localhost**.
+- Kamera memerlukan kebenaran pengguna dan persekitaran **HTTPS** atau **localhost**. Apabila aktif, video webcam menjadi **latar belakang penuh papan permainan** seperti gaya kuiz webcam; nombor, kad buah dan bakul berada di atas video. Ia **tidak** memotong latar video atau melukis rangka tangan.
 - Modul MediaPipe `@mediapipe/tasks-vision@0.10.22-rc.20250304` (jsDelivr) dan model hand_landmarker (Google) dimuat turun ketika webcam diaktifkan. Maka, webcam memerlukan sambungan internet sekurang-kurangnya semasa muat turun pertama.
 - Video webcam diproses di browser dan tidak disimpan atau dimuat naik **oleh kod permainan ini**. CDN/model luaran digunakan untuk muat turun pustaka/model sahaja. Elakkan menggunakan identiti sebenar murid.
 - Fungsi webcam dan kadar bingkai bergantung pada peranti, browser, pencahayaan dan keizinan kamera. Uji pada peranti sasaran sebelum digunakan di kelas.

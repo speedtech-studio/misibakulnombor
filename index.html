@@ -38,10 +38,7 @@
             <button type="button" class="mode-btn" data-mode="pinch" aria-pressed="false"><span class="mode-emoji">🤏</span><span><strong>Pinch & Drag</strong><small>Cubit untuk ambil / pilih</small></span></button>
           </div>
           <button id="cameraBtn" class="camera-btn" type="button" hidden>📷 Hidupkan webcam</button>
-          <div class="camera-preview" id="cameraPreview" hidden>
-            <video id="cameraVideo" playsinline muted autoplay aria-label="Webcam untuk pengesanan tangan"></video>
-            <p class="camera-tag" id="cameraTag">🎥 Webcam aktif tanpa latar belakang paparan</p>
-          </div>
+          <div class="camera-preview" id="cameraPreview" hidden><p class="camera-tag" id="cameraTag">🎥 Kamera aktif</p></div>
           <p class="control-status" id="cameraStatus" role="status">Gunakan jari atau mouse untuk bermain.</p>
         </section>
 
@@ -69,7 +66,7 @@
             <h2 id="stageTitle">Misi 1 · Jom Kira!</h2>
             <p id="stageSubtitle" class="stage-subtitle">Kira buah dan pilih nombor yang betul.</p>
           </div>
-          <div class="stage-tools"><div class="round-badge"><span id="roundText">Soalan 1 / 5</span><span class="star-icon" aria-hidden="true">⭐</span></div><button type="button" class="secondary-button fullscreen-btn" id="fullscreenBtn" aria-pressed="false">⛶ Fullscreen game</button></div>
+          <div class="round-badge"><span id="roundText">Soalan 1 / 5</span><span class="star-icon" aria-hidden="true">⭐</span></div>
         </div>
 
         <div class="level-tabs" role="group" aria-label="Pilih misi">
@@ -79,43 +76,19 @@
         </div>
 
         <div class="progress-track" id="progressTrack" aria-label="Kemajuan bagi tahap ini"></div>
-        <p class="webcam-note" id="webcamNote" hidden>🎥 Webcam aktif. Tangan akan muncul sebagai panduan di atas game.</p>
 
-        <section class="play-hud" aria-label="Maklumat permainan">
-          <div class="hud-card lives-card">
-            <span class="hud-label">NYAWA</span>
-            <strong id="livesText" class="hud-hearts">❤️❤️❤️</strong>
-            <small>Peluang cuba untuk soalan ini</small>
-          </div>
-          <div class="hud-card score-card">
-            <span class="hud-label">SKOR</span>
-            <strong id="scoreText" class="hud-score">0</strong>
-            <small>Kutip mata sambil belajar</small>
-          </div>
-          <div class="hud-card mode-card">
-            <span class="hud-label">MOD</span>
-            <strong id="modeText" class="hud-mode">Sentuhan / mouse</strong>
-            <small id="modeHint">Tekan, pilih atau seret</small>
-          </div>
-        </section>
-
-        <div class="progress-card">
-          <div class="progress-copy">
-            <strong id="progressTitle">Kemajuan misi</strong>
-            <span id="progressMeta">0%</span>
-          </div>
-          <div class="progress-bar" aria-hidden="true"><span id="progressFill"></span></div>
-        </div>
-
-        <section class="game-card" aria-label="Permainan numerasi">
+        <section class="game-card" id="gameStage" aria-label="Permainan numerasi">
+          <div class="game-toolbar"><span class="game-toolbar-label">🎮 RUANG PERMAINAN</span><button type="button" class="fullscreen-btn" id="fullscreenBtn" aria-pressed="false">⛶ Fullscreen game</button></div>
           <div class="instruction-box">
             <div class="instruction-icon" aria-hidden="true">📣</div>
             <div><span class="instruction-label">MISI SEKARANG</span><p id="instruction">Berapa biji buah yang kamu lihat?</p></div>
             <button type="button" class="speak-btn" id="speakBtn" aria-label="Dengar arahan">🔈</button>
           </div>
           <div class="board-wrap" id="boardWrap">
+            <video id="cameraVideo" class="board-camera" autoplay muted playsinline aria-label="Video webcam sebagai latar permainan"></video>
             <div class="game-board" id="gameBoard" aria-live="off"></div>
-            <canvas id="handOverlay" class="hand-overlay" aria-hidden="true"></canvas>
+            <div class="webcam-badge" aria-hidden="true">● WEBCAM AKTIF</div>
+            <div id="handCursor" class="hand-cursor" hidden aria-hidden="true"><span class="cursor-ring"></span><span id="carriedFruit" class="carried-fruit"></span></div>
           </div>
           <div id="hintPanel" class="hint-panel" hidden><strong>💡 Petunjuk</strong><span id="hintText"></span></div>
           <div class="feedback" id="feedback" role="status" aria-live="polite"><span class="feedback-icon">🌟</span><span id="feedbackText">Jom mulakan! Pilih jawapan kamu.</span></div>
@@ -135,7 +108,6 @@
     </div>
   </div>
 
-  <div id="handCursor" class="hand-cursor" hidden aria-hidden="true"><span id="handCursorSymbol">☝️</span><span class="cursor-ring"></span><span id="carriedFruit" class="carried-fruit"></span></div>
 
   <dialog id="helpDialog" class="help-dialog" aria-labelledby="helpTitle">
     <form method="dialog" class="help-body"><button type="submit" class="close-help" aria-label="Tutup">✕</button>
@@ -144,10 +116,10 @@
       <p><strong>Misi 2 — Isi Bakul:</strong> Masukkan bilangan buah mengikut nombor. Sentuh buah, kemudian bakul, atau seret buah ke bakul. Tekan <em>Semak bakul</em> selepas siap.</p>
       <p><strong>Misi 3 — Padankan:</strong> Cari gambar kumpulan buah yang sepadan dengan nombor.</p>
       <h3>🎥 Kawalan webcam</h3>
-      <p><strong>Point & Select:</strong> Halakan jari telunjuk ke pilihan, tahan hingga bulatan penunjuk penuh. Untuk Misi 2, pilih buah dahulu, kemudian halakan ke bakul.</p>
+      <p><strong>Point & Select:</strong> Video webcam menjadi latar game. Halakan jari telunjuk ke pilihan, tahan hingga bulatan penunjuk penuh. Untuk Misi 2, pilih buah dahulu, kemudian halakan ke bakul.</p>
       <p><strong>Pinch & Drag:</strong> Cantumkan ibu jari dan telunjuk untuk memilih. Dalam Misi 2, cubit di atas buah, bawa ke bakul, lalu lepaskan. Anda juga boleh memilih buah dan kemudian mencubit di atas bakul.</p>
       <p><strong>Sentuhan / mouse:</strong> Boleh digunakan tanpa kamera. Semua misi boleh diselesaikan menggunakan kaedah ini.</p>
-      <p>Kamera hanya diaktifkan selepas mendapat kebenaran, video dianalisis dalam browser, dan tiada rakaman dimuat naik oleh permainan. MediaPipe memerlukan internet untuk memuatkan pustaka dan model.</p>
+      <p>Apabila dihidupkan, video webcam menjadi latar permainan. Kamera hanya diaktifkan selepas mendapat kebenaran, video dianalisis dalam browser, dan tiada rakaman dimuat naik oleh permainan. MediaPipe memerlukan internet untuk memuatkan pustaka dan model.</p>
       <button type="submit" class="primary-button">Faham, jom main!</button>
     </form>
   </dialog>

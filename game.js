@@ -7,14 +7,6 @@
 const $ = (id) => document.getElementById(id);
 const board = $("gameBoard");
 const boardWrap = $("boardWrap");
-const handOverlay = $("handOverlay");
-const handCtx = handOverlay ? handOverlay.getContext("2d") : null;
-
-const MODE_LABELS = {
-  touch: { title: "Sentuhan / mouse", hint: "Tekan, pilih atau seret" },
-  point: { title: "Point & Select", hint: "Halakan jari dan tunggu bulatan penuh" },
-  pinch: { title: "Pinch & Drag", hint: "Cubit untuk pilih atau seret buah" }
-};
 const LEVELS = {
   1: { title: "Misi 1 · Jom Kira!", sub: "Kira buah dan pilih nombor yang betul." },
   2: { title: "Misi 2 · Isi Bakul!", sub: "Kumpulkan buah mengikut nombor yang dipaparkan." },
@@ -29,7 +21,7 @@ const state = {
     lastVideoTime: -1, lastDetectAt: 0, cursorX: null, cursorY: null,
     pinched: false, dragId: null, hoverKey: "", hoverSince: 0,
     cooldownUntil: 0, busy: false, lastLandmarks: null, drawRaf: null },
-  pointerDrag: null, score: 0, lives: 3, maxLives: 3
+  pointerDrag: null
 };
 
 function targetSequence() {
@@ -48,68 +40,6 @@ function numberOptions(target) {
   return selected.sort((a, b) => a - b);
 }
 function fruit() { return ICONS[(state.round + state.level - 1) % ICONS.length]; }
-const HAND_CONNECTIONS=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
-function syncOverlaySize(){
-  if(!handOverlay||!boardWrap) return;
-  const rect=boardWrap.getBoundingClientRect();
-  const dpr=Math.max(1,window.devicePixelRatio||1);
-  const w=Math.max(1,Math.round(rect.width));
-  const h=Math.max(1,Math.round(rect.height));
-  if(handOverlay.width!==Math.round(w*dpr)||handOverlay.height!==Math.round(h*dpr)){
-    handOverlay.width=Math.round(w*dpr);
-    handOverlay.height=Math.round(h*dpr);
-    handOverlay.style.width=w+"px";
-    handOverlay.style.height=h+"px";
-    handCtx.setTransform(dpr,0,0,dpr,0,0);
-  }
-}
-function clearHandOverlay(){
-  if(!handCtx||!handOverlay) return;
-  syncOverlaySize();
-  handCtx.clearRect(0,0,handOverlay.width,handOverlay.height);
-}
-function drawHandOverlay(landmarks){
-  if(!handCtx||!handOverlay||!boardWrap) return;
-  syncOverlaySize();
-  const rect=boardWrap.getBoundingClientRect();
-  const w=rect.width,h=rect.height;
-  handCtx.clearRect(0,0,w,h);
-  if(!landmarks||!landmarks.length) return;
-  const pts=landmarks.map(pt=>({x:(1-pt.x)*w,y:pt.y*h}));
-  handCtx.save();
-  handCtx.lineCap='round';
-  handCtx.lineJoin='round';
-  handCtx.strokeStyle='rgba(28,119,91,0.95)';
-  handCtx.fillStyle='rgba(28,119,91,0.18)';
-  handCtx.lineWidth=10;
-  // palm fill
-  handCtx.beginPath();
-  const palm=[0,1,2,5,9,13,17];
-  palm.forEach((idx,i)=>{const p=pts[idx]; if(i===0) handCtx.moveTo(p.x,p.y); else handCtx.lineTo(p.x,p.y);});
-  handCtx.closePath();
-  handCtx.fill();
-  // fingers & connections
-  HAND_CONNECTIONS.forEach(([a,b])=>{
-    const p1=pts[a],p2=pts[b];
-    handCtx.beginPath(); handCtx.moveTo(p1.x,p1.y); handCtx.lineTo(p2.x,p2.y); handCtx.stroke();
-  });
-  pts.forEach((p,i)=>{
-    handCtx.beginPath();
-    handCtx.fillStyle=i===8?'rgba(234,155,55,0.95)':(i===4?'rgba(180,63,77,0.95)':'rgba(255,255,255,0.95)');
-    handCtx.arc(p.x,p.y,i===8||i===4?10:7,0,Math.PI*2);
-    handCtx.fill();
-    handCtx.lineWidth=3; handCtx.strokeStyle='rgba(28,119,91,.9)'; handCtx.stroke();
-  });
-  // halo pointer at index tip
-  const tip=pts[8];
-  handCtx.beginPath();
-  handCtx.strokeStyle='rgba(234,155,55,0.85)';
-  handCtx.lineWidth=4;
-  handCtx.arc(tip.x,tip.y,20,0,Math.PI*2);
-  handCtx.stroke();
-  handCtx.restore();
-}
-
 function cluster(n, cls = "big-fruit") { return Array(n).fill(`<span class="${cls}" aria-label="sebiji buah">${fruit()}</span>`).join(""); }
 function setInstruction(text) { $("instruction").textContent = text; }
 function setFeedback(text, type = "neutral") {
@@ -127,15 +57,6 @@ function speak(text) {
   } catch (err) { console.warn("Speech not available", err); }
 }
 
-function updateHud() {
-  const full='❤️';
-  const empty='🤍';
-  $("livesText").textContent = full.repeat(Math.max(0,state.lives)) + empty.repeat(Math.max(0,state.maxLives-state.lives));
-  $("scoreText").textContent = String(state.score);
-  const mode=MODE_LABELS[state.mode] || MODE_LABELS.touch;
-  $("modeText").textContent = mode.title;
-  $("modeHint").textContent = mode.hint;
-}
 function updateStats() {
   $("correctStat").textContent = state.records.filter(r => r.firstTry === "Ya").length;
   $("completedStat").textContent = state.records.length;
@@ -143,13 +64,8 @@ function updateStats() {
 }
 function updateProgress() {
   const total = targetSequence().length;
-  const current = Math.min(state.round + 1, total);
-  const pct = Math.round((state.round / total) * 100);
-  $("roundText").textContent = `Soalan ${current} / ${total}`;
+  $("roundText").textContent = `Soalan ${Math.min(state.round + 1, total)} / ${total}`;
   $("progressTrack").innerHTML = Array.from({ length: total }, (_, i) => `<span class="progress-pip ${i < state.round ? "done" : i === state.round ? "current" : ""}"></span>`).join("");
-  $("progressTitle").textContent = `Kemajuan ${LEVELS[state.level].title}`;
-  $("progressMeta").textContent = `${pct}%`;
-  $("progressFill").style.width = `${pct}%`;
 }
 function updateTabs() {
   document.querySelectorAll(".level-tab").forEach(b => {
@@ -163,11 +79,10 @@ function updateTabs() {
 function updateGame() {
   state.hand.hoverKey = "";
   state.hand.hoverSince = 0;
-  syncOverlaySize();
   state.hand.dragId = null;
   $("carriedFruit").textContent = "";
   const total = targetSequence().length;
-  updateTabs(); updateProgress(); updateStats(); updateHud();
+  updateTabs(); updateProgress(); updateStats();
   $("hintPanel").hidden = !state.hintUsed;
   $("retryBtn").disabled = state.answered || state.round >= total;
   $("nextBtn").hidden = !state.answered;
@@ -229,13 +144,12 @@ function renderFinished() {
   $("progressTrack").innerHTML = targetSequence().map(() => '<span class="progress-pip done"></span>').join("");
   $("nextBtn").hidden = false;
   $("nextBtn").textContent = state.level===3 ? "Main dari Misi 1 ↻" : "Pergi ke misi seterusnya →";
-  board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Setiap percubaan ialah peluang belajar! Skor misi semasa ialah <strong>${state.score}</strong>.</p><p>Guru boleh melihat rekod melalui butang <strong>Eksport rekod CSV</strong>.</p></div></div>`;
+  board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Setiap percubaan ialah peluang belajar!</p><p>Guru boleh melihat rekod melalui butang <strong>Eksport rekod CSV</strong>.</p></div></div>`;
   $("retryBtn").disabled = true;
 }
 function resetQuestion({ preserveErrors = false } = {}) {
   state.answered = false;
   if (!preserveErrors) state.errors = 0;
-  state.lives = state.maxLives;
   state.hintUsed = false; state.selectedFruit = null; state.collected = [];
   state.startTime = Date.now();
   $("hintPanel").hidden = true;
@@ -245,39 +159,33 @@ function resetQuestion({ preserveErrors = false } = {}) {
 function switchLevel(level) {
   state.level = level;
   state.round = 0;
-  state.lives = state.maxLives;
-  syncFullscreenButton();
-resetQuestion();
+  resetQuestion();
 }
 function completeAnswer() {
   if (state.answered) return;
   state.answered = true;
-  const earned = Math.max(4, 10 - (state.errors * 2) - (state.hintUsed ? 2 : 0));
-  state.score += earned;
   state.records.push({
     at: new Date().toLocaleString("ms-MY"), level: state.level,
-    round: state.round + 1, expected: currentTarget(), earned,
+    round: state.round + 1, expected: currentTarget(),
     mode: state.mode, firstTry: state.errors === 0 ? "Ya" : "Tidak",
     errors: state.errors, hint: state.hintUsed ? "Ya" : "Tidak",
     seconds: Math.max(0, Math.round((Date.now() - state.startTime) / 1000))
   });
-  setFeedback(`Bagus! Kamu berjaya! +${earned} mata`, earned >= 8 ? "reward" : "success");
+  setFeedback("Bagus! Kamu berjaya!", "success");
   speak("Bagus! Kamu berjaya!");
   updateGame();
 }
 function wrongAnswer() {
   if (state.answered) return;
   state.errors += 1;
-  state.lives = Math.max(0, state.maxLives - state.errors);
-  if (state.lives === 0 && !state.hintUsed) {
+  if (state.errors >= 3 && !state.hintUsed) {
     showHint();
-    setFeedback("Tak mengapa. Jom guna petunjuk dulu, kemudian cuba lagi!", "error");
-    speak("Tak mengapa. Mari guna petunjuk.");
+    setFeedback("Tak mengapa. Jom guna petunjuk, kemudian cuba lagi!", "error");
+    speak("Mari guna petunjuk. Kemudian cuba lagi.");
   } else {
     setFeedback("Belum tepat. Tidak mengapa, cuba kira satu demi satu!", "error");
     speak("Cuba lagi. Kira satu demi satu.");
   }
-  updateHud();
 }
 function answerChoice(v) {
   if (state.answered) return;
@@ -327,8 +235,7 @@ function advance() {
   if (!state.answered) return;
   state.round++;
   if (state.round >= total) updateGame();
-  else syncFullscreenButton();
-resetQuestion();
+  else resetQuestion();
 }
 function handleAction(target) {
   if (!target || !target.dataset || state.answered) return;
@@ -383,12 +290,11 @@ function insideBasket(x,y) {
 
 // ---------- MediaPipe Hand Landmarker camera control ----------
 const cursor = $("handCursor");
-function cameraMessage(msg) { $("cameraStatus").textContent = msg; const t=$("cameraTag"); if(t) t.textContent = msg; const n=$("webcamNote"); if(n && state.mode!=="touch") n.textContent = "🎥 " + msg; }
+function cameraMessage(msg) { $("cameraStatus").textContent = msg; const t=$("cameraTag"); if(t) t.textContent = msg; }
 function closeHandCursor() {
   cursor.hidden = true; $("carriedFruit").textContent="";
   state.hand.hoverKey=""; state.hand.dragId=null; state.hand.pinched=false; state.hand.lastLandmarks=null;
-  boardWrap?.classList.remove("webcam-live");
-  clearHandOverlay();
+  state.hand.cursorX=null; state.hand.cursorY=null;
 }
 async function stopCamera() {
   const hand=state.hand;
@@ -399,8 +305,8 @@ async function stopCamera() {
   hand.stream=null;
   $("cameraVideo").srcObject=null;
   $("cameraPreview").hidden=true;
-  if($("webcamNote")) $("webcamNote").hidden=true;
   hand.lastVideoTime=-1;
+  boardWrap?.classList.remove("webcam-live");
   closeHandCursor();
   $("cameraBtn").textContent="📷 Hidupkan webcam";
   cameraMessage("Kamera dimatikan. Sentuhan dan mouse masih boleh digunakan.");
@@ -436,7 +342,7 @@ async function startCamera() {
     if (state.mode === "touch" || h.stream !== stream) { await stopCamera(); return; }
     h.active=true;
     $("cameraPreview").hidden=false;
-    if($("webcamNote")) $("webcamNote").hidden=false;
+    boardWrap?.classList.add("webcam-live");
     $("cameraBtn").textContent="⛔ Matikan webcam";
     cameraMessage(state.mode==="pinch"?"Kamera aktif. Cubit untuk memilih; lepaskan buah di atas bakul.":"Kamera aktif. Halakan jari dan tunggu bulatan penuh.");
     h.raf=requestAnimationFrame(detectLoop);
@@ -464,18 +370,20 @@ function detectLoop(now) {
     if(!result.landmarks?.length) { closeHandCursor();cameraMessage("Tangan belum dikesan. Letakkan satu tangan di hadapan kamera.");return; }
     const l=result.landmarks[0];
     const tip=l[8],thumb=l[4];
-    // The camera preview is mirrored; mirror the hand x coordinate as well.
+    // Match pointer coordinates to the mirrored webcam background with object-fit:cover.
     const r=board.getBoundingClientRect();
-    const wantedX=r.left+(1-tip.x)*r.width;
-    const wantedY=r.top+tip.y*r.height;
+    const scale=Math.max(r.width/v.videoWidth,r.height/v.videoHeight);
+    const coverWidth=v.videoWidth*scale, coverHeight=v.videoHeight*scale;
+    const cropX=(coverWidth-r.width)/2, cropY=(coverHeight-r.height)/2;
+    const wantedX=r.left+(1-tip.x)*coverWidth-cropX;
+    const wantedY=r.top+tip.y*coverHeight-cropY;
     const alpha=.46;
     h.cursorX=h.cursorX===null?wantedX:h.cursorX+(wantedX-h.cursorX)*alpha;
     h.cursorY=h.cursorY===null?wantedY:h.cursorY+(wantedY-h.cursorY)*alpha;
     cursor.hidden=false;
-    cursor.style.left=h.cursorX+"px";cursor.style.top=h.cursorY+"px";
+    cursor.style.left=(h.cursorX-r.left)+"px";
+    cursor.style.top=(h.cursorY-r.top)+"px";
     h.lastLandmarks=l;
-    boardWrap?.classList.add("webcam-live");
-    drawHandOverlay(l);
     const refSize=Math.max(.055,distance(l[0],l[9]));
     const pinchRatio=distance(thumb,tip)/refSize;
     if(state.mode==="pinch") processPinch(pinchRatio,now);
@@ -488,7 +396,6 @@ function detectLoop(now) {
 }
 function processDwell(now) {
   const h=state.hand;
-  $("handCursorSymbol").textContent="☝️";
   const el=gestureTargetAt(h.cursorX,h.cursorY);
   const key=el ? `${el.dataset.gesture}:${el.dataset.value??el.dataset.fruit??""}` : "";
   if(!key || state.answered) {h.hoverKey="";cursor.style.setProperty("--progress","0%");return;}
@@ -504,7 +411,6 @@ function processPinch(ratio,now) {
   const h=state.hand;
   const closing=!h.pinched&&ratio<.42;
   const opening=h.pinched&&ratio>.66;
-  $("handCursorSymbol").textContent=h.pinched?"🤏":"👆";
   cursor.style.setProperty("--progress",h.pinched?"100%":"0%");
   if(closing) {
     h.pinched=true;
@@ -535,40 +441,47 @@ function updateMode(mode) {
     void stopCamera();
     cameraMessage("Gunakan jari, mouse atau papan kekunci untuk bermain.");
   } else {
-    if($("webcamNote")) $("webcamNote").hidden=!state.hand.active;
     $("cameraBtn").hidden=false;
     if(!state.hand.active) cameraMessage("Tekan 'Hidupkan webcam' untuk mula. Sentuhan/mouse masih tersedia.");
     else cameraMessage(mode==="point"?"Halakan jari dan tunggu bulatan penuh.":"Cubit jari untuk memilih atau menyeret buah.");
     state.hand.hoverKey="";state.hand.pinched=false;state.hand.dragId=null;
   }
-  updateHud();
 }
 
 
 function fullscreenElement(){return document.fullscreenElement || document.webkitFullscreenElement || null;}
 async function toggleFullscreen(){
-  const main=$("main");
-  const btn=$("fullscreenBtn");
-  try{
-    if(fullscreenElement()){
+  const stage=$("gameStage");
+  try {
+    if(fullscreenElement() === stage){
       if(document.exitFullscreen) await document.exitFullscreen();
       else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
-    }else{
-      if(main.requestFullscreen) await main.requestFullscreen();
-      else if(main.webkitRequestFullscreen) main.webkitRequestFullscreen();
+    } else if(stage.classList.contains("theater-mode")) {
+      stage.classList.remove("theater-mode");
+      document.body.classList.remove("game-theater");
+    } else if(stage.requestFullscreen){
+      await stage.requestFullscreen();
+    } else if(stage.webkitRequestFullscreen){
+      stage.webkitRequestFullscreen();
+    } else {
+      stage.classList.add("theater-mode");
+      document.body.classList.add("game-theater");
     }
   }catch(err){
-    console.warn("Fullscreen not available",err);
-    setFeedback("Fullscreen tidak disokong pada peranti ini. Teruskan bermain dalam paparan biasa.");
+    console.warn("Full screen not supported",err);
+    // iOS Safari can reject element fullscreen: provide immersive in-page alternative.
+    stage.classList.add("theater-mode");
+    document.body.classList.add("game-theater");
   }
+  syncFullscreenButton();
 }
 function syncFullscreenButton(){
-  const active=!!fullscreenElement();
+  const stage=$("gameStage");
+  const active=fullscreenElement()===stage || stage.classList.contains("theater-mode");
   const btn=$("fullscreenBtn");
-  if(!btn) return;
   btn.classList.toggle("is-active",active);
   btn.setAttribute("aria-pressed",String(active));
-  btn.textContent=active?"🡼 Keluar fullscreen":"⛶ Fullscreen game";
+  btn.textContent=active?"✕ Keluar fullscreen":"⛶ Fullscreen game";
 }
 // ---------- App controls ----------
 document.querySelectorAll(".mode-btn").forEach(b=>b.addEventListener("click",()=>updateMode(b.dataset.mode)));
@@ -590,14 +503,14 @@ resetQuestion();
 });
 $("resetBtn").addEventListener("click",()=>{
   if(!window.confirm("Mulakan semula dan padam rekod pembelajaran sesi ini?")) return;
-  state.records=[];state.score=0;state.max=Number($("rangeSelect").value);switchLevel(1);
+  state.records=[];state.max=Number($("rangeSelect").value);switchLevel(1);
   setFeedback("Sesi baharu bermula. Jom kira buah!");
 });
 $("downloadBtn").addEventListener("click",()=>{
   if(!state.records.length){setFeedback("Tiada rekod lagi. Main sekurang-kurangnya satu soalan sebelum mengeksport.");return;}
-  const headings=["Tarikh masa","Tahap","Soalan","Sasaran nombor","Mata diperoleh","Kawalan","Betul cubaan pertama","Bilangan kesilapan","Bantuan digunakan","Tempoh saat"];
+  const headings=["Tarikh masa","Tahap","Soalan","Sasaran nombor","Kawalan","Betul cubaan pertama","Bilangan kesilapan","Bantuan digunakan","Tempoh saat"];
   const safe=(value)=>'"'+String(value).replace(/^[=+@-]/,"'").replace(/"/g,'""')+'"';
-  const data=state.records.map(r=>[r.at,r.level,r.round,r.expected,r.earned ?? "",r.mode,r.firstTry,r.errors,r.hint,r.seconds]);
+  const data=state.records.map(r=>[r.at,r.level,r.round,r.expected,r.mode,r.firstTry,r.errors,r.hint,r.seconds]);
   const csv="\ufeff"+[headings,...data].map(line=>line.map(safe).join(",")).join("\r\n");
   const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   const a=document.createElement("a");a.href=url;a.download="rekod-misi-bakul-nombor.csv";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
@@ -608,9 +521,5 @@ if($("fullscreenBtn")) $("fullscreenBtn").addEventListener("click",toggleFullscr
 document.addEventListener("fullscreenchange",syncFullscreenButton);
 document.addEventListener("webkitfullscreenchange",syncFullscreenButton);
 window.addEventListener("pagehide",()=>{if(state.hand.stream)state.hand.stream.getTracks().forEach(t=>t.stop())});
-window.addEventListener("resize",syncOverlaySize);
-document.addEventListener("fullscreenchange",()=>setTimeout(syncOverlaySize,60));
-document.addEventListener("webkitfullscreenchange",()=>setTimeout(syncOverlaySize,60));
-syncOverlaySize();
 syncFullscreenButton();
 resetQuestion();
