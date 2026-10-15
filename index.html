@@ -39,8 +39,8 @@
           </div>
           <button id="cameraBtn" class="camera-btn" type="button" hidden>📷 Hidupkan webcam</button>
           <div class="camera-preview" id="cameraPreview" hidden>
-            <video id="cameraVideo" playsinline muted autoplay aria-label="Pratonton webcam anda"></video>
-            <p class="camera-tag">Kamera aktif — video tidak dirakam</p>
+            <video id="cameraVideo" playsinline muted autoplay aria-label="Webcam untuk pengesanan tangan"></video>
+            <p class="camera-tag" id="cameraTag">🎥 Webcam aktif tanpa latar belakang paparan</p>
           </div>
           <p class="control-status" id="cameraStatus" role="status">Gunakan jari atau mouse untuk bermain.</p>
         </section>
@@ -69,7 +69,7 @@
             <h2 id="stageTitle">Misi 1 · Jom Kira!</h2>
             <p id="stageSubtitle" class="stage-subtitle">Kira buah dan pilih nombor yang betul.</p>
           </div>
-          <div class="round-badge"><span id="roundText">Soalan 1 / 5</span><span class="star-icon" aria-hidden="true">⭐</span></div>
+          <div class="stage-tools"><div class="round-badge"><span id="roundText">Soalan 1 / 5</span><span class="star-icon" aria-hidden="true">⭐</span></div><button type="button" class="secondary-button fullscreen-btn" id="fullscreenBtn" aria-pressed="false">⛶ Fullscreen game</button></div>
         </div>
 
         <div class="level-tabs" role="group" aria-label="Pilih misi">
@@ -79,6 +79,33 @@
         </div>
 
         <div class="progress-track" id="progressTrack" aria-label="Kemajuan bagi tahap ini"></div>
+        <p class="webcam-note" id="webcamNote" hidden>🎥 Webcam aktif. Tangan akan muncul sebagai panduan di atas game.</p>
+
+        <section class="play-hud" aria-label="Maklumat permainan">
+          <div class="hud-card lives-card">
+            <span class="hud-label">NYAWA</span>
+            <strong id="livesText" class="hud-hearts">❤️❤️❤️</strong>
+            <small>Peluang cuba untuk soalan ini</small>
+          </div>
+          <div class="hud-card score-card">
+            <span class="hud-label">SKOR</span>
+            <strong id="scoreText" class="hud-score">0</strong>
+            <small>Kutip mata sambil belajar</small>
+          </div>
+          <div class="hud-card mode-card">
+            <span class="hud-label">MOD</span>
+            <strong id="modeText" class="hud-mode">Sentuhan / mouse</strong>
+            <small id="modeHint">Tekan, pilih atau seret</small>
+          </div>
+        </section>
+
+        <div class="progress-card">
+          <div class="progress-copy">
+            <strong id="progressTitle">Kemajuan misi</strong>
+            <span id="progressMeta">0%</span>
+          </div>
+          <div class="progress-bar" aria-hidden="true"><span id="progressFill"></span></div>
+        </div>
 
         <section class="game-card" aria-label="Permainan numerasi">
           <div class="instruction-box">
@@ -86,7 +113,10 @@
             <div><span class="instruction-label">MISI SEKARANG</span><p id="instruction">Berapa biji buah yang kamu lihat?</p></div>
             <button type="button" class="speak-btn" id="speakBtn" aria-label="Dengar arahan">🔈</button>
           </div>
-          <div class="game-board" id="gameBoard" aria-live="off"></div>
+          <div class="board-wrap" id="boardWrap">
+            <div class="game-board" id="gameBoard" aria-live="off"></div>
+            <canvas id="handOverlay" class="hand-overlay" aria-hidden="true"></canvas>
+          </div>
           <div id="hintPanel" class="hint-panel" hidden><strong>💡 Petunjuk</strong><span id="hintText"></span></div>
           <div class="feedback" id="feedback" role="status" aria-live="polite"><span class="feedback-icon">🌟</span><span id="feedbackText">Jom mulakan! Pilih jawapan kamu.</span></div>
           <div class="game-actions">
