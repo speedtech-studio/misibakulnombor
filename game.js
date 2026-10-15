@@ -198,21 +198,18 @@ function renderLevel1() {
 function renderLevel2() {
   const n = currentTarget();
   setInstruction(`Masukkan ${n} biji buah ke dalam bakul.`);
-  const fruitCount = Math.min(Math.max(5, n + 2), 12);
+  const fruitCount = Math.min(Math.max(state.max + 2, n + 1), 12);
   const collected = state.collected;
   const collectedSet = new Set(collected);
   board.innerHTML = `<div class="board-content orchard-scene">
     <span class="board-label">🤲 Seret atau pilih buah dari pokok ke bakul</span>
     <div class="target-number" aria-label="Nombor ${n}">${n}</div>
-    <div class="orchard-play-area">
-      <div class="orchard-left-col">
-        <div class="orchard-tree" aria-label="Pokok buah">
-          <img class="tree-image" src="tree-cartoon.svg?v=113-desktop" alt="Pokok buah kartun" draggable="false">
-          <div class="fruit-tree-zone" aria-label="Buah pada pokok">${Array.from({ length: fruitCount }, (_, i) => `<div data-slot="${i}" data-gesture="fruit" data-fruit="${i}" class="fruit-token ${collectedSet.has(i) ? "used" : ""} ${state.selectedFruit === i ? "selected" : ""}" role="button" tabindex="${collectedSet.has(i) || state.answered ? "-1" : "0"}" aria-label="Pilih buah nombor ${i+1}" aria-disabled="${collectedSet.has(i) || state.answered}"><span class="fruit-emoji" aria-hidden="true">${fruit()}</span></div>`).join("")}</div>
-        </div>
-        <span class="tree-helper">Petik buah dari pokok dan bawa ke bakul.</span>
-      </div>
-      <div class="orchard-basket-area">
+    <div class="orchard-tree" aria-label="Pokok buah">
+      <img class="tree-image" src="tree-cartoon.svg" alt="Pokok buah kartun" draggable="false">
+      <div class="fruit-tree-zone" aria-label="Buah pada pokok">${Array.from({ length: fruitCount }, (_, i) => `<div data-slot="${i}" data-gesture="fruit" data-fruit="${i}" class="fruit-token ${collectedSet.has(i) ? "used" : ""} ${state.selectedFruit === i ? "selected" : ""}" role="button" tabindex="${collectedSet.has(i) || state.answered ? "-1" : "0"}" aria-label="Pilih buah nombor ${i+1}" aria-disabled="${collectedSet.has(i) || state.answered}"><span class="fruit-emoji" aria-hidden="true">${fruit()}</span></div>`).join("")}</div>
+    </div>
+    <span class="tree-helper">Petik buah dari pokok dan bawa ke bakul.</span>
+    <div class="orchard-basket-area">
       <div class="basket-zone" data-gesture="basket" role="button" tabindex="0" aria-label="Masukkan buah yang dipilih ke bakul">
          <span class="basket-count">${collected.length} / ${n}</span>
          <span class="basket-graphic" aria-hidden="true">🧺</span>
@@ -221,7 +218,6 @@ function renderLevel2() {
       <div class="board-footer">
         <button type="button" class="secondary-button" data-gesture="undo" ${collected.length===0 || state.answered ? "disabled" : ""}>↶ Keluarkan satu buah</button>
       </div>
-    </div>
     </div>
   </div>`;
 }

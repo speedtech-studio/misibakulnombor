@@ -21,6 +21,9 @@
     <path d="M396 320 C350 280, 330 250, 318 214" stroke="#9b6238" stroke-width="18" stroke-linecap="round"/>
     <path d="M405 325 C446 285, 470 254, 487 218" stroke="#9b6238" stroke-width="18" stroke-linecap="round"/>
   </g>
+  <g fill="#ff6b6b" stroke="#ffffff" stroke-width="8">
+    <circle cx="275" cy="245" r="21"/><circle cx="337" cy="180" r="21"/><circle cx="455" cy="180" r="21"/><circle cx="533" cy="258" r="21"/><circle cx="395" cy="250" r="21"/><circle cx="465" cy="310" r="21"/>
+  </g>
   <g fill="#ffe56f" opacity="0.85">
     <circle cx="210" cy="98" r="14"/><circle cx="598" cy="96" r="12"/><circle cx="644" cy="148" r="10"/>
   </g>
