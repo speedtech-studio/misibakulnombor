@@ -21,7 +21,7 @@ const MODE_LABELS = {
 const LEVELS = {
   1: { title: "Misi 1 · Jom Kira!", sub: "Kira buah dan pilih nombor yang betul." },
   2: { title: "Misi 2 · Isi Bakul!", sub: "Kumpulkan buah mengikut nombor yang dipaparkan." },
-  3: { title: "Misi 3 · Padankan!", sub: "Pilih gambar yang mempunyai bilangan yang betul." }
+  3: { title: "Misi 3 · Padankan!", sub: "Sambungkan nombor dengan kumpulan buah menggunakan garisan." }
 };
 const ICONS = ["🍎", "🍊", "🍐", "🍓", "🍋"];
 const state = {
@@ -32,7 +32,7 @@ const state = {
     lastVideoTime: -1, lastDetectAt: 0, cursorX: null, cursorY: null,
     pinched: false, dragId: null, hoverKey: "", hoverSince: 0,
     cooldownUntil: 0, busy: false, lastLandmarks: null, drawRaf: null, lastTrailAt: 0 },
-  pointerDrag: null, score: 0, lives: 3, maxLives: 3, autoTimer: null, sequence: [3,1,5,2,4]
+  pointerDrag: null, score: 0, lives: 3, maxLives: 3, autoTimer: null, sequence: [3,1,5,2,4], matching: null, matchErrorTimer: null
 };
 
 function shuffleList(list) {
@@ -147,11 +147,18 @@ function updateStats() {
   $("completedStat").textContent = state.records.length;
   $("hintsStat").textContent = state.records.filter(r => r.hint === "Ya").length;
 }
+function roundCount() {
+  // Misi 3 is presented in manageable sets of at most five matching pairs.
+  return state.level===3 ? Math.ceil(state.max / 5) : targetSequence().length;
+}
+function matchingBatchValues() {
+  return targetSequence().slice(state.round * 5, state.round * 5 + 5);
+}
 function updateProgress() {
-  const total = targetSequence().length;
+  const total = roundCount();
   const current = Math.min(state.round + 1, total);
   const pct = Math.round((state.round / total) * 100);
-  $("roundText").textContent = `Soalan ${current} / ${total}`;
+  $("roundText").textContent = `${state.level===3 ? "Set padanan" : "Soalan"} ${current} / ${total}`;
   $("progressTrack").innerHTML = Array.from({ length: total }, (_, i) => `<span class="progress-pip ${i < state.round ? "done" : i === state.round ? "current" : ""}"></span>`).join("");
   if($("progressTitle")) $("progressTitle").textContent = `Kemajuan ${LEVELS[state.level].title}`;
   if($("progressMeta")) $("progressMeta").textContent = `${pct}%`;
@@ -172,7 +179,7 @@ function updateGame() {
   syncOverlaySize();
   state.hand.dragId = null;
   $("carriedFruit").textContent = "";
-  const total = targetSequence().length;
+  const total = roundCount();
   updateTabs(); updateProgress(); updateStats(); updateHud();
   $("hintPanel").hidden = !state.hintUsed;
   $("retryBtn").disabled = state.answered || state.round >= total;
@@ -231,22 +238,113 @@ function renderLevel2() {
 }
 
 function renderLevel3() {
-  const n = currentTarget();
-  setInstruction(`Cari kumpulan yang mempunyai ${n} biji buah.`);
-  board.innerHTML = `<div class="board-content">
-    <span class="board-label">🔎 Cari gambar yang sesuai</span>
-    <div class="target-number" aria-label="Nombor ${n}">${n}</div>
-    <div class="group-choices" aria-label="Pilihan kumpulan buah">
-      ${numberOptions(n).map((v,i) => `<button type="button" class="group-btn" data-gesture="group" data-value="${v}" aria-label="Kumpulan ${v} biji buah" ${state.answered ? "disabled" : ""}><span class="group-fruits" aria-hidden="true">${Array(v).fill(fruit()).join(" ")}</span><span class="group-subtitle">Pilihan ${i+1}</span></button>`).join("")}
+  setInstruction("Padankan nombor dengan kumpulan buah yang sama bilangannya.");
+  if (!state.matching || state.matching.round !== state.round) {
+    const values=matchingBatchValues();
+    state.matching={round:state.round,values,numbers:shuffleList(values),groups:shuffleList(values),selected:null,matched:[],wrong:null};
+  }
+  const m=state.matching;
+  board.innerHTML = `<div class="board-content matching-scene">
+    <span class="board-label">🔗 Pilih nombor, kemudian kumpulan buah. Garisan akan muncul!</span>
+    <div class="matching-progress" id="matchingProgress" role="status">${m.matched.length} / ${m.values.length} padanan siap</div>
+    <div class="matching-board" id="matchingBoard" aria-label="Permainan padankan nombor dengan kuantiti">
+      <svg class="matching-lines" id="matchingLines" aria-hidden="true" preserveAspectRatio="none"></svg>
+      <div class="matching-column" aria-label="Nombor">
+        <strong class="matching-heading">NOMBOR</strong>
+        ${m.numbers.map(n=>`<button type="button" class="match-number" data-gesture="match-number" data-value="${n}" aria-label="Pilih nombor ${n}" aria-pressed="false" ${m.matched.includes(n)||state.answered ? "disabled" : ""}>${n}</button>`).join("")}
+      </div>
+      <div class="matching-column" aria-label="Kumpulan buah">
+        <strong class="matching-heading">BUAH</strong>
+        ${m.groups.map((n,i)=>`<button type="button" class="match-group" data-gesture="match-group" data-value="${n}" aria-label="Kumpulan ${n} biji buah" ${m.matched.includes(n)||state.answered ? "disabled" : ""}><span class="match-fruits" aria-hidden="true">${Array.from({length:n},()=>`<span class="match-fruit">${fruit()}</span>`).join("")}</span><small>Pilihan ${i+1}</small></button>`).join("")}
+      </div>
     </div>
+    <p class="matching-help">🟢 Garisan hijau = betul &nbsp; · &nbsp; 🔴 Garisan merah = cuba lagi</p>
   </div>`;
+  updateMatchingVisuals();
+  requestAnimationFrame(drawMatchingLines);
+}
+function updateMatchingVisuals(){
+  const m=state.matching;
+  if(!m || state.level!==3) return;
+  board.querySelectorAll("[data-gesture='match-number']").forEach(button=>{
+    const value=Number(button.dataset.value);
+    button.classList.toggle("is-picked",value===m.selected);
+    button.classList.toggle("is-matched",m.matched.includes(value));
+    button.disabled=m.matched.includes(value)||state.answered;
+    button.setAttribute("aria-pressed",String(value===m.selected));
+  });
+  board.querySelectorAll("[data-gesture='match-group']").forEach(button=>{
+    const value=Number(button.dataset.value);
+    button.classList.toggle("is-matched",m.matched.includes(value));
+    button.disabled=m.matched.includes(value)||state.answered;
+  });
+  const counter=$("matchingProgress");
+  if(counter) counter.textContent=`${m.matched.length} / ${m.values.length} padanan siap`;
+  requestAnimationFrame(drawMatchingLines);
+}
+function drawMatchingLines(){
+  const m=state.matching, container=$("matchingBoard"), svg=$("matchingLines");
+  if(state.level!==3||!m||!container||!svg) return;
+  const rect=container.getBoundingClientRect();
+  if(rect.width<=0||rect.height<=0)return;
+  svg.setAttribute("viewBox",`0 0 ${rect.width} ${rect.height}`);
+  const line=(n,g,color,cls)=>{
+    const left=container.querySelector(`[data-gesture="match-number"][data-value="${n}"]`);
+    const right=container.querySelector(`[data-gesture="match-group"][data-value="${g}"]`);
+    if(!left||!right)return '';
+    const a=left.getBoundingClientRect(),b=right.getBoundingClientRect();
+    const x1=a.right-rect.left-3,y1=a.top+a.height/2-rect.top;
+    const x2=b.left-rect.left+3,y2=b.top+b.height/2-rect.top;
+    return `<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="7" stroke-linecap="round"/>`;
+  };
+  svg.innerHTML=m.matched.map(n=>line(n,n,"#25a962","correct-match-line")).join("")
+    +(m.wrong?line(m.wrong.n,m.wrong.g,"#ed5361","wrong-match-line"):"");
+}
+function handleMatchChoice(node){
+  if(state.level!==3||state.answered||!state.matching)return;
+  const m=state.matching,value=Number(node.dataset.value);
+  if(m.matched.includes(value)||m.wrong)return;
+  if(node.dataset.gesture==="match-number"){
+    m.selected=value;
+    setFeedback(`Nombor ${value} dipilih. Sekarang cari kumpulan buah yang sepadan.`);
+    updateMatchingVisuals();
+    return;
+  }
+  if(m.selected===null){
+    setFeedback("Pilih satu nombor di sebelah kiri dahulu.");
+    speak("Pilih nombor dahulu.");
+    return;
+  }
+  const picked=m.selected;
+  if(picked===value){
+    m.matched.push(value);
+    m.selected=null;
+    setFeedback(`Hebat! Nombor ${value} berjaya dipadankan!`,"success");
+    speak("Bagus! Padanan betul.");
+    updateMatchingVisuals();
+    if(m.matched.length===m.values.length){
+      completeAnswer();
+    }
+  }else{
+    state.errors++;
+    m.wrong={n:picked,g:value};
+    m.selected=null;
+    setFeedback("Belum tepat. Cuba padankan semula!","error");
+    speak("Cuba lagi.");
+    updateMatchingVisuals();
+    if(state.matchErrorTimer)clearTimeout(state.matchErrorTimer);
+    state.matchErrorTimer=setTimeout(()=>{
+      if(state.matching===m){m.wrong=null;updateMatchingVisuals();}
+      state.matchErrorTimer=null;
+    },850);
+  }
 }
 function renderFinished() {
   const byLevel = state.records.filter(r => r.level === state.level);
   const first = byLevel.filter(r => r.firstTry === "Ya").length;
   setInstruction(`Tahniah! Kamu sudah mencuba ${LEVELS[state.level].title.toLowerCase()}.`);
   $("roundText").textContent = "Misi selesai";
-  $("progressTrack").innerHTML = targetSequence().map(() => '<span class="progress-pip done"></span>').join("");
+  $("progressTrack").innerHTML = Array.from({length:roundCount()},()=>'<span class="progress-pip done"></span>').join("");
   $("nextBtn").hidden = true;
   $("retryBtn").hidden = true;
   board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Skor misi semasa ialah <strong>${state.score}</strong>.</p><p>${state.level===3 ? "Permainan akan bermula semula secara automatik." : "Misi seterusnya akan bermula secara automatik."}</p></div></div>`;
@@ -256,6 +354,8 @@ function renderFinished() {
 }
 function resetQuestion({ preserveErrors = false } = {}) {
   clearAutoFlow();
+  if(state.matchErrorTimer){clearTimeout(state.matchErrorTimer);state.matchErrorTimer=null;}
+  state.matching=null;
   state.answered = false;
   if (!preserveErrors) state.errors = 0;
   state.lives = preserveErrors ? Math.max(1, state.maxLives - Math.min(state.errors, state.maxLives - 1)) : state.maxLives;
@@ -284,7 +384,7 @@ function completeAnswer() {
   state.score += earned;
   state.records.push({
     at: new Date().toLocaleString("ms-MY"), level: state.level,
-    round: state.round + 1, expected: currentTarget(), earned,
+    round: state.round + 1, expected: state.level===3 ? state.matching?.values.join(";") : currentTarget(), earned,
     mode: state.mode, firstTry: state.errors === 0 ? "Ya" : "Tidak",
     errors: state.errors, hint: state.hintUsed ? "Ya" : "Tidak",
     seconds: Math.max(0, Math.round((Date.now() - state.startTime) / 1000))
@@ -350,11 +450,11 @@ function showHint() {
   let hint;
   if (state.level===1) hint = `Sentuh atau kira buah satu demi satu. Cuba sebut: ${Array.from({length:n},(_,i)=>i+1).join(", ")}.`;
   else if (state.level===2) hint = `Lihat nombor ${n}. Ambil satu buah pada satu masa. Masukkan ke bakul sehingga ada ${n} buah. Permainan akan semak secara automatik.`;
-  else hint = `Nombor yang dicari ialah ${n}. Kira buah dalam setiap kad satu demi satu, kemudian pilih yang mempunyai ${n} buah.`;
+  else hint = "Pilih satu nombor di kiri. Kira buah di sebelah kanan satu demi satu, kemudian tekan kumpulan yang sama banyak. Garisan hijau akan kekal.";
   $("hintText").textContent = hint;
 }
 function advance() {
-  const total = targetSequence().length;
+  const total = roundCount();
   if (state.round >= total) {
     if (state.level < 3) switchLevel(state.level + 1);
     else switchLevel(1);
@@ -370,6 +470,7 @@ function handleAction(target) {
   if (!target || !target.dataset || state.answered) return;
   switch (target.dataset.gesture) {
     case "number": case "group": answerChoice(target.dataset.value); break;
+    case "match-number": case "match-group": handleMatchChoice(target); break;
     case "fruit": selectFruit(Number(target.dataset.fruit)); break;
     case "basket": depositFruit(state.selectedFruit); break;
     case "check": checkBasket(); break;
@@ -650,10 +751,11 @@ $("downloadBtn").addEventListener("click",()=>{
 });
 $("openHelp").addEventListener("click",()=>$("helpDialog").showModal());
 if($("fullscreenBtn")) $("fullscreenBtn").addEventListener("click",toggleFullscreen);
-document.addEventListener("fullscreenchange",syncFullscreenButton);
+document.addEventListener("fullscreenchange",()=>{syncFullscreenButton();setTimeout(drawMatchingLines,180);});
 document.addEventListener("webkitfullscreenchange",syncFullscreenButton);
 window.addEventListener("pagehide",()=>{if(state.hand.stream)state.hand.stream.getTracks().forEach(t=>t.stop())});
-window.addEventListener("resize",syncOverlaySize);
+window.addEventListener("resize",()=>{syncOverlaySize();requestAnimationFrame(drawMatchingLines);});
+window.addEventListener("orientationchange",()=>setTimeout(drawMatchingLines,250));
 document.addEventListener("fullscreenchange",()=>setTimeout(syncOverlaySize,60));
 document.addEventListener("webkitfullscreenchange",()=>setTimeout(syncOverlaySize,60));
 syncOverlaySize();

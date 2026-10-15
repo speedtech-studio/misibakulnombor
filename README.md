@@ -62,3 +62,12 @@ Kemas kini terkini: fullscreen fokus pada ruang permainan sahaja; webcam dipapar
 - Pada telefon sempit, pokok berada di atas dan bakul di bawah supaya kedua-duanya boleh dipilih dengan selesa.
 - Logik Misi 1–3, julat 1–3/1–5/1–10, webcam dan confetti tidak diubah.
 - Untuk GitHub Pages, muat naik semua lima fail (index.html, styles.css, game.js, tree-cartoon.svg, README.md) ke folder root repo dan gantikan fail lama. URL CSS/JS mempunyai versi ?v=116 untuk mengurangkan isu cache.
+
+
+## Penambahbaikan Misi 3 (v1.17)
+
+- Padankan nombor di sebelah kiri dengan kumpulan buah di sebelah kanan. Murid memilih satu nombor, kemudian kumpulan buah untuk menyambungkan garisan; tiada drag & drop diperlukan.
+- Garisan **hijau** kekal selepas betul, garisan **merah** hanya muncul sebentar selepas salah.
+- Julat **1–3**: satu set 3 pasangan; **1–5**: satu set 5 pasangan; **1–10**: dua set 5 pasangan, merangkumi semua nombor 1 hingga 10 tanpa pengulangan dalam misi.
+- Boleh dimainkan dengan sentuhan, mouse, papan kekunci, Point & Select dan Pinch & Drag (gestur memilih dua sasaran).
+- Misi 1, Misi 2, webcam, fullscreen, bakul dan ciri sedia ada kekal daripada master v1.16.
