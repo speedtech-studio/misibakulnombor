@@ -10,6 +10,7 @@ const boardWrap = $("boardWrap");
 const handOverlay = $("handOverlay");
 const handCtx = handOverlay ? handOverlay.getContext("2d") : null;
 const starTrailLayer = $("starTrailLayer");
+const confettiLayer = $("confettiLayer");
 const handCursorSymbol = $("handCursorSymbol");
 
 const MODE_LABELS = {
@@ -31,15 +32,32 @@ const state = {
     lastVideoTime: -1, lastDetectAt: 0, cursorX: null, cursorY: null,
     pinched: false, dragId: null, hoverKey: "", hoverSince: 0,
     cooldownUntil: 0, busy: false, lastLandmarks: null, drawRaf: null, lastTrailAt: 0 },
-  pointerDrag: null, score: 0, lives: 3, maxLives: 3, autoTimer: null
+  pointerDrag: null, score: 0, lives: 3, maxLives: 3, autoTimer: null, sequence: [3,1,5,2,4]
 };
 
+function shuffleList(list) {
+  const arr = [...list];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function buildSequence() {
+  return shuffleList(Array.from({ length: state.max }, (_, i) => i + 1));
+}
+function ensureSequence(force = false) {
+  if (force || !Array.isArray(state.sequence) || state.sequence.length !== state.max) {
+    state.sequence = buildSequence();
+  }
+}
 function targetSequence() {
-  return state.max === 3 ? [2, 1, 3] : [3, 1, 5, 2, 4];
+  ensureSequence();
+  return state.sequence;
 }
 function currentTarget() {
   const sequence = targetSequence();
-  return sequence[(state.round + state.level - 1) % sequence.length];
+  return sequence[Math.min(state.round, sequence.length - 1)] ?? 1;
 }
 function numberOptions(target) {
   const nums = Array.from({ length: state.max }, (_, i) => i + 1);
@@ -78,9 +96,25 @@ function emitTrailStar(x,y){
 function maybeEmitTrail(now){
   const h=state.hand;
   if(!h.active || h.cursorX===null || h.cursorY===null) return;
-  if(now-(h.lastTrailAt||0)<80) return;
+  if(now-(h.lastTrailAt||0)<34) return;
   h.lastTrailAt=now;
   emitTrailStar(h.cursorX,h.cursorY);
+  if (Math.random() > 0.35) emitTrailStar(h.cursorX + (Math.random()*28-14), h.cursorY + (Math.random()*24-12));
+}
+function burstConfetti(count = 44) {
+  if (!confettiLayer) return;
+  confettiLayer.innerHTML = "";
+  const colors = ["#ffd84d", "#ff7ab6", "#55d0ff", "#7be36b", "#ffb25b", "#b992ff"];
+  for (let i = 0; i < count; i++) {
+    const piece = document.createElement("span");
+    piece.className = "confetti-piece";
+    piece.style.left = `${Math.random()*100}%`;
+    piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+    piece.style.setProperty("--dur", `${1400 + Math.random()*1200}ms`);
+    piece.style.transform = `translateY(-20px) rotate(${Math.random()*100}deg)`;
+    confettiLayer.appendChild(piece);
+    setTimeout(() => piece.remove(), 2600);
+  }
 }
 function cluster(n, cls = "big-fruit") { return Array(n).fill(`<span class="${cls}" aria-label="sebiji buah"><span class="fruit-emoji" aria-hidden="true">${fruit()}</span></span>`).join(""); }
 function setInstruction(text) { $("instruction").textContent = text; }
@@ -172,9 +206,9 @@ function renderLevel2() {
     <div class="target-number" aria-label="Nombor ${n}">${n}</div>
     <div class="orchard-tree" aria-label="Pokok buah">
       <img class="tree-image" src="tree-cartoon.svg" alt="Pokok buah kartun" draggable="false">
-      <div class="fruit-tree-zone" aria-label="Buah pada pokok">${Array.from({ length: fruitCount }, (_, i) => `<div data-gesture="fruit" data-fruit="${i}" class="fruit-token ${collectedSet.has(i) ? "used" : ""} ${state.selectedFruit === i ? "selected" : ""}" role="button" tabindex="${collectedSet.has(i) || state.answered ? "-1" : "0"}" aria-label="Pilih buah nombor ${i+1}" aria-disabled="${collectedSet.has(i) || state.answered}"><span class="fruit-emoji" aria-hidden="true">${fruit()}</span></div>`).join("")}</div>
+      <div class="fruit-tree-zone" aria-label="Buah pada pokok">${Array.from({ length: fruitCount }, (_, i) => `<div data-slot="${i}" data-gesture="fruit" data-fruit="${i}" class="fruit-token ${collectedSet.has(i) ? "used" : ""} ${state.selectedFruit === i ? "selected" : ""}" role="button" tabindex="${collectedSet.has(i) || state.answered ? "-1" : "0"}" aria-label="Pilih buah nombor ${i+1}" aria-disabled="${collectedSet.has(i) || state.answered}"><span class="fruit-emoji" aria-hidden="true">${fruit()}</span></div>`).join("")}</div>
     </div>
-    <span class="tree-helper">Ambil buah dari pokok dan bawa ke bakul.</span>
+    <span class="tree-helper">Petik buah dari pokok dan bawa ke bakul.</span>
     <div class="orchard-basket-area">
       <div class="basket-zone" data-gesture="basket" role="button" tabindex="0" aria-label="Masukkan buah yang dipilih ke bakul">
          <span class="basket-count">${collected.length} / ${n}</span>
@@ -208,7 +242,8 @@ function renderFinished() {
   $("retryBtn").hidden = true;
   board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Skor misi semasa ialah <strong>${state.score}</strong>.</p><p>${state.level===3 ? "Permainan akan bermula semula secara automatik." : "Misi seterusnya akan bermula secara automatik."}</p></div></div>`;
   $("retryBtn").disabled = true;
-  scheduleAutoFlow(()=>advance(), 1700);
+  burstConfetti(56);
+  scheduleAutoFlow(()=>advance(), 1900);
 }
 function resetQuestion({ preserveErrors = false } = {}) {
   clearAutoFlow();
@@ -227,6 +262,7 @@ function switchLevel(level) {
   clearAutoFlow();
   state.level = level;
   state.round = 0;
+  state.sequence = buildSequence();
   state.lives = state.maxLives;
   $("retryBtn").disabled = false;
   syncFullscreenButton();
@@ -582,6 +618,7 @@ $("nextBtn").addEventListener("click",advance);
 document.querySelectorAll(".level-tab").forEach(b=>b.addEventListener("click",()=>switchLevel(Number(b.dataset.level))));
 $("rangeSelect").addEventListener("change",(ev)=>{
   state.max=Number(ev.target.value);
+  state.sequence = buildSequence();
   state.round=0;
   syncFullscreenButton();
   resetQuestion();
@@ -589,7 +626,7 @@ $("rangeSelect").addEventListener("change",(ev)=>{
 $("resetBtn").addEventListener("click",()=>{
   if(!window.confirm("Mulakan semula dan padam rekod pembelajaran sesi ini?")) return;
   window.clearTimeout(state.autoTimer);
-  state.records=[];state.score=0;state.max=Number($("rangeSelect").value);switchLevel(1);
+  state.records=[];state.score=0;state.max=Number($("rangeSelect").value);state.sequence=buildSequence();switchLevel(1);
   setFeedback("Sesi baharu bermula. Jom kira buah!");
 });
 $("downloadBtn").addEventListener("click",()=>{
@@ -612,4 +649,5 @@ document.addEventListener("fullscreenchange",()=>setTimeout(syncOverlaySize,60))
 document.addEventListener("webkitfullscreenchange",()=>setTimeout(syncOverlaySize,60));
 syncOverlaySize();
 syncFullscreenButton();
+state.sequence = buildSequence();
 resetQuestion();
