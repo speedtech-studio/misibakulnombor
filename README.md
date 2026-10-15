@@ -51,3 +51,6 @@ Permainan interaktif HTML/CSS/JavaScript bagi latihan menghubungkan nombor 1–5
 - `game.js` — logik permainan, rekod dan pengesanan MediaPipe
 
 Kod ini ditulis khusus untuk tugasan permainan interaktif. Emoji sistem digunakan untuk objek buah dan tidak memerlukan fail imej tambahan.
+
+
+Kemas kini terkini: fullscreen fokus pada ruang permainan sahaja; webcam dipaparkan sebaik diaktifkan; jawapan betul bergerak automatik ke soalan seterusnya; jawapan salah mengulang automatik soalan yang sama; pokok Misi 2 digayakan lebih kartun dan mesra MBPK.

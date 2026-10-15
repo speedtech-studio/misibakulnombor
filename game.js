@@ -31,7 +31,7 @@ const state = {
     lastVideoTime: -1, lastDetectAt: 0, cursorX: null, cursorY: null,
     pinched: false, dragId: null, hoverKey: "", hoverSince: 0,
     cooldownUntil: 0, busy: false, lastLandmarks: null, drawRaf: null, lastTrailAt: 0 },
-  pointerDrag: null, score: 0, lives: 3, maxLives: 3
+  pointerDrag: null, score: 0, lives: 3, maxLives: 3, autoTimer: null
 };
 
 function targetSequence() {
@@ -50,6 +50,13 @@ function numberOptions(target) {
   return selected.sort((a, b) => a - b);
 }
 function fruit() { return ICONS[(state.round + state.level - 1) % ICONS.length]; }
+function clearAutoFlow(){
+  if(state.autoTimer){ clearTimeout(state.autoTimer); state.autoTimer=null; }
+}
+function scheduleAutoFlow(fn, delay=1200){
+  clearAutoFlow();
+  state.autoTimer=setTimeout(()=>{ state.autoTimer=null; fn(); }, delay);
+}
 const STAR_COLORS=["#ffd84d","#ff8bc2","#63d8ff","#8cf07a","#ffad5b","#c99dff"];
 function syncOverlaySize(){}
 function clearHandOverlay(){}
@@ -199,27 +206,33 @@ function renderFinished() {
   setInstruction(`Tahniah! Kamu sudah mencuba ${LEVELS[state.level].title.toLowerCase()}.`);
   $("roundText").textContent = "Misi selesai";
   $("progressTrack").innerHTML = targetSequence().map(() => '<span class="progress-pip done"></span>').join("");
-  $("nextBtn").hidden = false;
-  $("nextBtn").textContent = state.level===3 ? "Main dari Misi 1 ↻" : "Pergi ke misi seterusnya →";
-  board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Setiap percubaan ialah peluang belajar! Skor misi semasa ialah <strong>${state.score}</strong>.</p><p>Guru boleh melihat rekod melalui butang <strong>Eksport rekod CSV</strong>.</p></div></div>`;
+  $("nextBtn").hidden = true;
+  $("retryBtn").hidden = true;
+  board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Skor misi semasa ialah <strong>${state.score}</strong>.</p><p>${state.level===3 ? "Permainan akan bermula semula secara automatik." : "Misi seterusnya akan bermula secara automatik."}</p></div></div>`;
   $("retryBtn").disabled = true;
+  scheduleAutoFlow(()=>advance(), 1700);
 }
 function resetQuestion({ preserveErrors = false } = {}) {
+  clearAutoFlow();
   state.answered = false;
   if (!preserveErrors) state.errors = 0;
-  state.lives = state.maxLives;
+  state.lives = preserveErrors ? Math.max(1, state.maxLives - Math.min(state.errors, state.maxLives - 1)) : state.maxLives;
   state.hintUsed = false; state.selectedFruit = null; state.collected = [];
   state.startTime = Date.now();
   $("hintPanel").hidden = true;
+  $("retryBtn").hidden = true;
+  $("nextBtn").hidden = true;
   setFeedback("Jom cuba! Tiada had masa.");
   updateGame();
 }
 function switchLevel(level) {
+  clearAutoFlow();
   state.level = level;
   state.round = 0;
   state.lives = state.maxLives;
+  $("retryBtn").disabled = false;
   syncFullscreenButton();
-resetQuestion();
+  resetQuestion();
 }
 function completeAnswer() {
   if (state.answered) return;
@@ -236,20 +249,21 @@ function completeAnswer() {
   setFeedback(`Bagus! Kamu berjaya! +${earned} mata`, earned >= 8 ? "reward" : "success");
   speak("Bagus! Kamu berjaya!");
   updateGame();
+  window.clearTimeout(state.autoTimer);
+  state.autoTimer = window.setTimeout(() => {
+    advance();
+  }, 1400);
 }
 function wrongAnswer() {
   if (state.answered) return;
   state.errors += 1;
-  state.lives = Math.max(0, state.maxLives - state.errors);
-  if (state.lives === 0 && !state.hintUsed) {
-    showHint();
-    setFeedback("Tak mengapa. Jom guna petunjuk dulu, kemudian cuba lagi!", "error");
-    speak("Tak mengapa. Mari guna petunjuk.");
-  } else {
-    setFeedback("Belum tepat. Tidak mengapa, cuba kira satu demi satu!", "error");
-    speak("Cuba lagi. Kira satu demi satu.");
-  }
+  setFeedback("Belum tepat. Cuba lagi ya! Soalan akan diulang semula.", "error");
+  speak("Belum tepat. Cuba lagi.");
   updateHud();
+  window.clearTimeout(state.autoTimer);
+  state.autoTimer = window.setTimeout(() => {
+    if (!state.answered) resetQuestion();
+  }, 1200);
 }
 function answerChoice(v) {
   if (state.answered) return;
@@ -364,6 +378,7 @@ function closeHandCursor() {
   clearHandOverlay();
 }
 async function stopCamera() {
+  clearAutoFlow();
   const hand=state.hand;
   hand.active=false;
   if(hand.raf) cancelAnimationFrame(hand.raf);
@@ -372,6 +387,7 @@ async function stopCamera() {
   hand.stream=null;
   $("cameraVideo").srcObject=null;
   $("cameraPreview").hidden=true;
+  boardWrap?.classList.remove("camera-ready");
   hand.lastVideoTime=-1;
   closeHandCursor();
   $("cameraBtn").textContent="📷 Hidupkan webcam";
@@ -388,6 +404,8 @@ async function startCamera() {
     h.stream=stream;
     if(state.mode==="touch") { await stopCamera(); return; }
     const video=$("cameraVideo"); video.srcObject=stream; await video.play();
+    boardWrap?.classList.add("camera-ready");
+    $("cameraPreview").hidden=false;
     if(!h.landmarker) {
       const { HandLandmarker, FilesetResolver } = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/+esm");
       const vision=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm");
@@ -407,6 +425,7 @@ async function startCamera() {
     // Do not reactivate the webcam if the learner switched modes during a slow model download.
     if (state.mode === "touch" || h.stream !== stream) { await stopCamera(); return; }
     h.active=true;
+    boardWrap?.classList.add("webcam-live");
     $("cameraPreview").hidden=false;
     $("cameraBtn").textContent="⛔ Matikan webcam";
     cameraMessage(state.mode==="pinch"?"Kamera aktif. Cubit untuk memilih; lepaskan buah di atas bakul.":"Kamera aktif. Halakan jari dan tunggu bulatan penuh.");
@@ -519,15 +538,15 @@ function updateMode(mode) {
 
 function fullscreenElement(){return document.fullscreenElement || document.webkitFullscreenElement || null;}
 async function toggleFullscreen(){
-  const main=$("main");
+  const stage=$("gameStage");
   const btn=$("fullscreenBtn");
   try{
     if(fullscreenElement()){
       if(document.exitFullscreen) await document.exitFullscreen();
       else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
     }else{
-      if(main.requestFullscreen) await main.requestFullscreen();
-      else if(main.webkitRequestFullscreen) main.webkitRequestFullscreen();
+      if(stage.requestFullscreen) await stage.requestFullscreen();
+      else if(stage.webkitRequestFullscreen) stage.webkitRequestFullscreen();
     }
   }catch(err){
     console.warn("Fullscreen not available",err);
@@ -540,7 +559,7 @@ function syncFullscreenButton(){
   if(!btn) return;
   btn.classList.toggle("is-active",active);
   btn.setAttribute("aria-pressed",String(active));
-  btn.textContent=active?"🡼 Keluar fullscreen":"⛶ Fullscreen game";
+  btn.textContent=active?"🡼 Keluar fullscreen":"⛶ Fullscreen";
 }
 // ---------- App controls ----------
 document.querySelectorAll(".mode-btn").forEach(b=>b.addEventListener("click",()=>updateMode(b.dataset.mode)));
@@ -562,6 +581,7 @@ resetQuestion();
 });
 $("resetBtn").addEventListener("click",()=>{
   if(!window.confirm("Mulakan semula dan padam rekod pembelajaran sesi ini?")) return;
+  window.clearTimeout(state.autoTimer);
   state.records=[];state.score=0;state.max=Number($("rangeSelect").value);switchLevel(1);
   setFeedback("Sesi baharu bermula. Jom kira buah!");
 });
