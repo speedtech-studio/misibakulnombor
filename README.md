@@ -2,7 +2,7 @@
 
 Versi ini mengekalkan reka bentuk asal Version 1, dengan sasaran nombor, buah dan bakul yang lebih besar. Dalam mod webcam, video kamera (termasuk tangan dan latar sebenar) memenuhi bahagian belakang permainan seperti contoh webcam quiz. **Tiada pemisahan latar, rangka tangan, atau UI skor/nyawa Version 3.**
 
-Permainan interaktif HTML/CSS/JavaScript bagi latihan menghubungkan nombor 1–5 dengan kuantiti objek. Direka dengan pilihan kawalan sentuhan/mouse, `Point & Select`, dan `Pinch & Drag` menggunakan MediaPipe Hand Landmarker.
+Permainan interaktif HTML/CSS/JavaScript bagi latihan menghubungkan nombor 1–10 dengan kuantiti objek. Direka dengan pilihan kawalan sentuhan/mouse, `Point & Select`, dan `Pinch & Drag` menggunakan MediaPipe Hand Landmarker.
 
 ## Mulakan
 
@@ -13,7 +13,7 @@ Permainan interaktif HTML/CSS/JavaScript bagi latihan menghubungkan nombor 1–5
 ## Cara bermain
 
 - **Misi 1 — Jom Kira:** kira buah dan pilih simbol nombor.
-- **Misi 2 — Isi Bakul:** ambil buah dan masukkan ke bakul; tekan **Semak bakul**. Pada skrin sentuh/mouse, ketik buah lalu bakul atau seret buah ke bakul. Dalam mod Point & Select, halakan jari 1.4 saat pada buah kemudian bakul. Dalam mod Pinch & Drag, cubit pada buah, gerakkan tangan, kemudian lepaskan di bakul. Jika gerakan sukar, pilih buah lalu cubit pada bakul.
+- **Misi 2 — Isi Bakul:** ambil buah dan masukkan ke bakul; permainan menyemak sendiri apabila bilangan buah mencukupi. Pada skrin sentuh/mouse, ketik buah lalu bakul atau seret buah ke bakul. Dalam mod Point & Select, halakan jari 1.4 saat pada buah kemudian bakul. Dalam mod Pinch & Drag, cubit pada buah, gerakkan tangan, kemudian lepaskan di bakul. Jika gerakan sukar, pilih buah lalu cubit pada bakul.
 - **Misi 3 — Padankan:** cari kumpulan buah yang sama bilangannya dengan simbol nombor.
 - Jika webcam gagal, pilih mod **Sentuhan / mouse**. Semua misi boleh dilakukan tanpa webcam.
 - Klik **⛶ Fullscreen game** di dalam kotak permainan untuk membesarkan permainan sahaja; tekan **✕ Keluar fullscreen** atau `Esc` untuk kembali. Sesetengah browser telefon menggunakan paparan imersif yang tidak semestinya menyembunyikan bar browser.
@@ -28,7 +28,7 @@ Permainan interaktif HTML/CSS/JavaScript bagi latihan menghubungkan nombor 1–5
 
 ## Panduan guru
 
-1. Pilih julat `1–3` atau `1–5` berdasarkan penguasaan awal murid.
+1. Pilih julat `1–3`, `1–5` atau `1–10` berdasarkan penguasaan awal murid.
 2. Mulakan dengan mod Sentuhan/mouse untuk mengesahkan murid faham tugasan, kemudian pilih mod webcam jika sesuai.
 3. Gunakan butang **Tunjuk bantuan** apabila murid memerlukan petunjuk.
 4. Bagi latihan sebenar, beri peluang murid membilang dan memadankan objek fizikal di kelas selepas bermain.
@@ -54,3 +54,12 @@ Kod ini ditulis khusus untuk tugasan permainan interaktif. Emoji sistem digunaka
 
 
 Kemas kini terkini: fullscreen fokus pada ruang permainan sahaja; webcam dipaparkan sebaik diaktifkan; jawapan betul bergerak automatik ke soalan seterusnya; jawapan salah mengulang automatik soalan yang sama; pokok Misi 2 digayakan lebih kartun dan mesra MBPK.
+
+## Nota perubahan V5
+- Pilihan nombor **1–3, 1–5, 1–10**, termasuk 10 buah pada pokok dan 10 soalan setiap misi bagi julat 1–10.
+- Jawapan betul bergerak automatik (1.4 saat). Jawapan salah mengulang soalan yang sama (1.25 saat) dengan bilangan kesilapan dikekalkan dalam rekod.
+- Misi 2 menilai automatik apabila bilangan buah sasaran dimasukkan, tidak perlu tekan Semak dalam fullscreen.
+- Misi tamat memaparkan skrin kejayaan dan seterusnya bertukar misi secara automatik; selepas Misi 3 tamat, skrin tamat kekal sehingga guru memilih mula semula.
+- Webcam menjadi latar selepas kebenaran kamera diberikan dan video dimainkan, tanpa perlu tunggu tangan dikesan.
+- Fullscreen hanya kawasan webcam + soalan + objek (tanpa butang tetapan/navigasi). Keluar dengan Esc atau kawalan fullscreen browser.
+- Fail CSS/JS menggunakan akhiran versi untuk mengelakkan cache GitHub Pages yang lama.

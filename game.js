@@ -31,11 +31,13 @@ const state = {
     lastVideoTime: -1, lastDetectAt: 0, cursorX: null, cursorY: null,
     pinched: false, dragId: null, hoverKey: "", hoverSince: 0,
     cooldownUntil: 0, busy: false, lastLandmarks: null, drawRaf: null, lastTrailAt: 0 },
-  pointerDrag: null, score: 0, lives: 3, maxLives: 3, autoTimer: null
+  pointerDrag: null, score: 0, lives: 3, maxLives: 3, autoTimer: null, waitingOnWrong: false
 };
 
 function targetSequence() {
-  return state.max === 3 ? [2, 1, 3] : [3, 1, 5, 2, 4];
+  if(state.max===3) return [2, 1, 3];
+  if(state.max===10) return [3, 1, 6, 9, 2, 8, 4, 10, 5, 7];
+  return [3, 1, 5, 2, 4];
 }
 function currentTarget() {
   const sequence = targetSequence();
@@ -164,13 +166,13 @@ function renderLevel1() {
 function renderLevel2() {
   const n = currentTarget();
   setInstruction(`Masukkan ${n} biji buah ke dalam bakul.`);
-  const fruitCount = Math.min(state.max + 2, 7);
+  const fruitCount = state.max === 10 ? 10 : Math.min(state.max + 2, 7);
   const collected = state.collected;
   const collectedSet = new Set(collected);
   board.innerHTML = `<div class="board-content orchard-scene">
     <span class="board-label">🤲 Seret atau pilih buah dari pokok ke bakul</span>
     <div class="target-number" aria-label="Nombor ${n}">${n}</div>
-    <div class="orchard-tree" aria-label="Pokok buah">
+    <div class="orchard-tree ${state.max === 10 ? "orchard-tree-ten" : ""}" aria-label="Pokok buah">
       <div class="tree-top" aria-hidden="true"></div>
       <div class="tree-trunk" aria-hidden="true"></div>
       <div class="fruit-tree-zone" aria-label="Buah pada pokok">${Array.from({ length: fruitCount }, (_, i) => `<div data-gesture="fruit" data-fruit="${i}" class="fruit-token ${collectedSet.has(i) ? "used" : ""} ${state.selectedFruit === i ? "selected" : ""}" role="button" tabindex="${collectedSet.has(i) || state.answered ? "-1" : "0"}" aria-label="Pilih buah nombor ${i+1}" aria-disabled="${collectedSet.has(i) || state.answered}"><span class="fruit-emoji" aria-hidden="true">${fruit()}</span></div>`).join("")}</div>
@@ -208,13 +210,14 @@ function renderFinished() {
   $("progressTrack").innerHTML = targetSequence().map(() => '<span class="progress-pip done"></span>').join("");
   $("nextBtn").hidden = true;
   $("retryBtn").hidden = true;
-  board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Skor misi semasa ialah <strong>${state.score}</strong>.</p><p>${state.level===3 ? "Permainan akan bermula semula secara automatik." : "Misi seterusnya akan bermula secara automatik."}</p></div></div>`;
+  board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Skor misi semasa ialah <strong>${state.score}</strong>.</p><p>${state.level===3 ? "Semua misi telah selesai. Syabas!" : "Misi seterusnya akan bermula secara automatik."}</p></div></div>`;
   $("retryBtn").disabled = true;
-  scheduleAutoFlow(()=>advance(), 1700);
+  if(state.level < 3) scheduleAutoFlow(()=>advance(), 1800);
 }
 function resetQuestion({ preserveErrors = false } = {}) {
   clearAutoFlow();
   state.answered = false;
+  state.waitingOnWrong = false;
   if (!preserveErrors) state.errors = 0;
   state.lives = preserveErrors ? Math.max(1, state.maxLives - Math.min(state.errors, state.maxLives - 1)) : state.maxLives;
   state.hintUsed = false; state.selectedFruit = null; state.collected = [];
@@ -235,7 +238,7 @@ function switchLevel(level) {
   resetQuestion();
 }
 function completeAnswer() {
-  if (state.answered) return;
+  if (state.answered || state.waitingOnWrong) return;
   state.answered = true;
   const earned = Math.max(4, 10 - (state.errors * 2) - (state.hintUsed ? 2 : 0));
   state.score += earned;
@@ -249,38 +252,39 @@ function completeAnswer() {
   setFeedback(`Bagus! Kamu berjaya! +${earned} mata`, earned >= 8 ? "reward" : "success");
   speak("Bagus! Kamu berjaya!");
   updateGame();
-  window.clearTimeout(state.autoTimer);
-  state.autoTimer = window.setTimeout(() => {
-    advance();
-  }, 1400);
+  scheduleAutoFlow(() => advance(), 1400);
 }
 function wrongAnswer() {
-  if (state.answered) return;
+  if (state.answered || state.waitingOnWrong) return;
   state.errors += 1;
-  setFeedback("Belum tepat. Cuba lagi ya! Soalan akan diulang semula.", "error");
-  speak("Belum tepat. Cuba lagi.");
+  state.waitingOnWrong = true;
+  setFeedback("Belum tepat. Soalan yang sama akan diulang. Cuba lagi ya!", "error");
+  speak("Cuba lagi.");
   updateHud();
-  window.clearTimeout(state.autoTimer);
-  state.autoTimer = window.setTimeout(() => {
-    if (!state.answered) resetQuestion();
-  }, 1200);
+  scheduleAutoFlow(() => {
+    if(!state.answered) resetQuestion({preserveErrors: true});
+  }, 1250);
 }
 function answerChoice(v) {
-  if (state.answered) return;
+  if (state.answered || state.waitingOnWrong) return;
   if (Number(v) === currentTarget()) completeAnswer();
   else wrongAnswer();
 }
 function selectFruit(id) {
-  if (state.level!==2 || state.answered || state.collected.includes(id)) return;
+  if (state.level!==2 || state.answered || state.waitingOnWrong || state.collected.includes(id)) return;
   state.selectedFruit = id;
   renderLevel2();
   setFeedback("Bagus! Sekarang masukkan buah ke dalam bakul.");
 }
 function depositFruit(id) {
-  if (state.level!==2 || state.answered || id === null || id === undefined || state.collected.includes(id)) return;
+  if (state.level!==2 || state.answered || state.waitingOnWrong || id === null || id === undefined || state.collected.includes(id)) return;
   state.collected.push(id); state.selectedFruit = null;
-  renderLevel2();
-  setFeedback(`Sudah ada ${state.collected.length} biji buah dalam bakul. Tekan “Semak bakul” apabila siap.`);
+  if(state.collected.length === currentTarget()) {
+    completeAnswer();  // All control modes including webcam automatically continue.
+  } else {
+    renderLevel2();
+    setFeedback(`Sudah ada ${state.collected.length} biji buah dalam bakul.`);
+  }
 }
 function undoFruit() {
   if (state.level!==2 || state.answered || state.collected.length===0) return;
@@ -313,11 +317,10 @@ function advance() {
   if (!state.answered) return;
   state.round++;
   if (state.round >= total) updateGame();
-  else syncFullscreenButton();
-resetQuestion();
+  else resetQuestion();
 }
 function handleAction(target) {
-  if (!target || !target.dataset || state.answered) return;
+  if (!target || !target.dataset || state.answered || state.waitingOnWrong) return;
   switch (target.dataset.gesture) {
     case "number": case "group": answerChoice(target.dataset.value); break;
     case "fruit": selectFruit(Number(target.dataset.fruit)); break;
@@ -378,7 +381,6 @@ function closeHandCursor() {
   clearHandOverlay();
 }
 async function stopCamera() {
-  clearAutoFlow();
   const hand=state.hand;
   hand.active=false;
   if(hand.raf) cancelAnimationFrame(hand.raf);
@@ -404,8 +406,10 @@ async function startCamera() {
     h.stream=stream;
     if(state.mode==="touch") { await stopCamera(); return; }
     const video=$("cameraVideo"); video.srcObject=stream; await video.play();
-    boardWrap?.classList.add("camera-ready");
+    boardWrap?.classList.add("camera-ready"); // Display webcam immediately, before MediaPipe finishes loading.
     $("cameraPreview").hidden=false;
+    $("cameraBtn").textContent="⛔ Matikan webcam";
+    cameraMessage("Webcam sudah dipaparkan. Sedang menyediakan pengesanan tangan…");
     if(!h.landmarker) {
       const { HandLandmarker, FilesetResolver } = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/+esm");
       const vision=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm");
@@ -576,8 +580,9 @@ $("retryBtn").addEventListener("click",()=>resetQuestion({preserveErrors:true}))
 $("nextBtn").addEventListener("click",advance);
 document.querySelectorAll(".level-tab").forEach(b=>b.addEventListener("click",()=>switchLevel(Number(b.dataset.level))));
 $("rangeSelect").addEventListener("change",(ev)=>{
-  state.max=Number(ev.target.value);state.round=0;syncFullscreenButton();
-resetQuestion();
+  clearAutoFlow();
+  state.max=Number(ev.target.value);state.round=0;
+  resetQuestion();
 });
 $("resetBtn").addEventListener("click",()=>{
   if(!window.confirm("Mulakan semula dan padam rekod pembelajaran sesi ini?")) return;

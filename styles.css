@@ -21,3 +21,38 @@ main:fullscreen .board-wrap.webcam-live .hand-overlay, main:-webkit-full-screen 
 .tree-top{background:radial-gradient(circle at 35% 30%,#bff39a 0,#89dc76 34%,#63c35d 62%,#4b9d49 100%);border:5px solid rgba(255,255,255,.38);box-shadow:inset 0 -14px 0 rgba(73,145,69,.16),0 12px 22px rgba(52,112,58,.16)}.tree-top:before,.tree-top:after{background:radial-gradient(circle at 35% 35%,#c9f8a8 0,#90e07e 45%,#5fbd5d 100%)}.tree-top::marker{content:""}.orchard-tree::before,.orchard-tree::after{content:"";position:absolute;bottom:24px;width:18px;height:62px;background:linear-gradient(180deg,#b27a4f,#8a582f);border-radius:20px;z-index:1}.orchard-tree::before{left:calc(50% - 42px);transform:rotate(-28deg)}.orchard-tree::after{left:calc(50% + 22px);transform:rotate(28deg)}.tree-trunk{background:linear-gradient(180deg,#c18857,#8a582e);border:3px solid rgba(255,255,255,.18)}
 /* device friendliness */
 @media (max-width:900px){.layout{grid-template-columns:1fr}.sidebar{order:2}.main-content{order:1}}@media (max-width:520px){.topbar{padding:14px 14px 12px}.brand-copy h1{font-size:1.35rem}.instruction-box{padding:10px 12px}.game-toolbar{padding-bottom:10px}.fullscreen-btn{min-height:42px;padding:8px 12px;font-size:.88rem}}
+
+
+/* V5 verified - single source of truth for fullscreen and range 1-10 */
+.build-version{color:#567e6e;font-size:.69rem;letter-spacing:.03em;font-weight:800}
+#gameStage .game-toolbar{display:flex;gap:16px;align-items:center;justify-content:space-between;margin:0 0 14px;padding:10px 14px;background:#f1f9f3;border:1px solid #d8e9da;border-radius:16px}
+#gameStage .fullscreen-btn{margin-left:auto;white-space:nowrap;min-width:146px;min-height:49px;border:2px solid #b9d9c5;border-radius:14px;background:#fff;box-shadow:0 4px 0 #cce3d3;font-weight:900;color:#174e40}
+/* Keep original game card while active: only the board fills fullscreen; no UI buttons. */
+#gameStage:fullscreen,#gameStage:-webkit-full-screen{display:block;position:relative;width:100vw;height:100dvh;max-height:100dvh;margin:0;padding:0;border:0;overflow:hidden;border-radius:0;background:#122d25}
+#gameStage:fullscreen .game-toolbar,#gameStage:-webkit-full-screen .game-toolbar,
+#gameStage:fullscreen .game-actions,#gameStage:-webkit-full-screen .game-actions,
+#gameStage:fullscreen .speak-btn,#gameStage:-webkit-full-screen .speak-btn,
+#gameStage:fullscreen #hintPanel,#gameStage:-webkit-full-screen #hintPanel,
+#gameStage:fullscreen .webcam-badge,#gameStage:-webkit-full-screen .webcam-badge,
+#gameStage:fullscreen .board-footer,#gameStage:-webkit-full-screen .board-footer{display:none!important}
+#gameStage:fullscreen .board-wrap,#gameStage:-webkit-full-screen .board-wrap{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:0}
+#gameStage:fullscreen .board-camera,#gameStage:-webkit-full-screen .board-camera{inset:0;border-radius:0;object-fit:cover}
+#gameStage:fullscreen .game-board,#gameStage:-webkit-full-screen .game-board{position:relative;width:100%;height:100%;min-height:0;max-height:100%;margin:0;border:0;border-radius:0;padding:96px clamp(12px,3vw,36px) 24px;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+#gameStage:fullscreen .instruction-box,#gameStage:-webkit-full-screen .instruction-box{position:absolute;top:0;left:0;right:0;margin:0;padding:13px 20px;background:rgba(255,255,255,.94);border:0;border-radius:0;z-index:10;box-shadow:none}
+#gameStage:fullscreen .feedback,#gameStage:-webkit-full-screen .feedback{position:absolute;left:12px;right:12px;bottom:8px;max-width:860px;margin:0 auto;z-index:10;padding:9px 15px;min-height:42px;background:rgba(255,255,255,.96);border-radius:14px;font-size:.94rem}
+#gameStage:fullscreen .orchard-scene,#gameStage:-webkit-full-screen .orchard-scene{gap:14px;padding-bottom:100px}
+/* Adapt fruit tree to show 10 fruits clearly; ensure a reachable basket even on small screens. */
+.orchard-tree-ten{min-height:260px;width:min(100%,720px)}
+.orchard-tree-ten .tree-top{width:min(98%,650px);height:195px}
+.orchard-tree-ten .tree-top:before{width:38%;height:76%;top:18px}
+.orchard-tree-ten .tree-top:after{width:38%;height:80%;top:14px}
+.orchard-tree-ten .tree-trunk{height:154px}
+.orchard-tree-ten .fruit-tree-zone{width:min(96%,620px);grid-template-columns:repeat(5,minmax(0,1fr));gap:7px 10px;padding-top:18px}
+.orchard-tree-ten .fruit-token{width:clamp(64px,6.6vw,84px);height:clamp(64px,6.6vw,84px);font-size:clamp(2.4rem,4vw,3rem);border-radius:20px}
+.board-wrap.webcam-live .orchard-tree-ten .fruit-token{width:clamp(64px,6.6vw,84px);height:clamp(64px,6.6vw,84px)}
+/* Options remain exactly three and large. */
+.number-choices .choice-btn{min-width:clamp(90px,10vw,145px);min-height:clamp(85px,10vw,120px)}
+.group-choices .group-btn{min-width:min(26%,140px);min-height:155px}
+.group-fruits{max-width:220px;flex-wrap:wrap}
+@media(max-width:700px){.orchard-tree-ten{min-height:300px}.orchard-tree-ten .tree-top{height:232px;width:99%}.orchard-tree-ten .fruit-tree-zone{grid-template-columns:repeat(3,minmax(0,1fr));width:min(96%,360px);gap:3px 5px;padding-top:10px}.orchard-tree-ten .fruit-token,.board-wrap.webcam-live .orchard-tree-ten .fruit-token{width:clamp(62px,17vw,82px);height:clamp(62px,17vw,82px);font-size:2.6rem}.orchard-tree-ten .tree-trunk{height:150px}.group-choices .group-btn{min-width:28%;padding:9px}.group-fruits{font-size:1.9rem}}
+@media(max-width:460px){#gameStage:fullscreen .game-board{padding:90px 10px 24px}#gameStage:fullscreen .instruction-box{padding:10px 13px}#gameStage:fullscreen .feedback{font-size:.83rem}.orchard-tree-ten{min-height:320px}.orchard-tree-ten .tree-top{height:250px}.group-choices .group-btn{min-width:29%;min-height:128px}.group-fruits{font-size:1.65rem}.number-choices .choice-btn{min-width:90px;min-height:90px}#gameStage .fullscreen-btn{min-width:125px}}
