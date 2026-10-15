@@ -7,6 +7,16 @@
 const $ = (id) => document.getElementById(id);
 const board = $("gameBoard");
 const boardWrap = $("boardWrap");
+const handOverlay = $("handOverlay");
+const handCtx = handOverlay ? handOverlay.getContext("2d") : null;
+const starTrailLayer = $("starTrailLayer");
+const handCursorSymbol = $("handCursorSymbol");
+
+const MODE_LABELS = {
+  touch: { title: "Sentuhan / mouse", hint: "Tekan, pilih atau seret" },
+  point: { title: "Point & Select", hint: "Halakan jari dan tunggu bulatan penuh" },
+  pinch: { title: "Pinch & Drag", hint: "Cubit untuk pilih atau seret buah" }
+};
 const LEVELS = {
   1: { title: "Misi 1 · Jom Kira!", sub: "Kira buah dan pilih nombor yang betul." },
   2: { title: "Misi 2 · Isi Bakul!", sub: "Kumpulkan buah mengikut nombor yang dipaparkan." },
@@ -20,8 +30,8 @@ const state = {
   hand: { active: false, landmarker: null, stream: null, raf: null,
     lastVideoTime: -1, lastDetectAt: 0, cursorX: null, cursorY: null,
     pinched: false, dragId: null, hoverKey: "", hoverSince: 0,
-    cooldownUntil: 0, busy: false, lastLandmarks: null, drawRaf: null },
-  pointerDrag: null
+    cooldownUntil: 0, busy: false, lastLandmarks: null, drawRaf: null, lastTrailAt: 0 },
+  pointerDrag: null, score: 0, lives: 3, maxLives: 3
 };
 
 function targetSequence() {
@@ -40,7 +50,32 @@ function numberOptions(target) {
   return selected.sort((a, b) => a - b);
 }
 function fruit() { return ICONS[(state.round + state.level - 1) % ICONS.length]; }
-function cluster(n, cls = "big-fruit") { return Array(n).fill(`<span class="${cls}" aria-label="sebiji buah">${fruit()}</span>`).join(""); }
+const STAR_COLORS=["#ffd84d","#ff8bc2","#63d8ff","#8cf07a","#ffad5b","#c99dff"];
+function syncOverlaySize(){}
+function clearHandOverlay(){}
+function drawHandOverlay(){}
+function emitTrailStar(x,y){
+  if(!starTrailLayer || state.mode==="touch" || !state.hand.active) return;
+  const layerRect=starTrailLayer.getBoundingClientRect();
+  const star=document.createElement("span");
+  star.className="trail-star";
+  star.textContent=Math.random()>.5?"★":"✦";
+  star.style.left=(x-layerRect.left)+"px";
+  star.style.top=(y-layerRect.top)+"px";
+  star.style.color=STAR_COLORS[Math.floor(Math.random()*STAR_COLORS.length)];
+  star.style.setProperty("--dx",`${(Math.random()*24)-12}px`);
+  star.style.setProperty("--dy",`${-18-(Math.random()*16)}px`);
+  starTrailLayer.appendChild(star);
+  setTimeout(()=>star.remove(),820);
+}
+function maybeEmitTrail(now){
+  const h=state.hand;
+  if(!h.active || h.cursorX===null || h.cursorY===null) return;
+  if(now-(h.lastTrailAt||0)<80) return;
+  h.lastTrailAt=now;
+  emitTrailStar(h.cursorX,h.cursorY);
+}
+function cluster(n, cls = "big-fruit") { return Array(n).fill(`<span class="${cls}" aria-label="sebiji buah"><span class="fruit-emoji" aria-hidden="true">${fruit()}</span></span>`).join(""); }
 function setInstruction(text) { $("instruction").textContent = text; }
 function setFeedback(text, type = "neutral") {
   $("feedbackText").textContent = text;
@@ -57,6 +92,15 @@ function speak(text) {
   } catch (err) { console.warn("Speech not available", err); }
 }
 
+function updateHud() {
+  const full='❤️';
+  const empty='🤍';
+  if($("livesText")) $("livesText").textContent = full.repeat(Math.max(0,state.lives)) + empty.repeat(Math.max(0,state.maxLives-state.lives));
+  if($("scoreText")) $("scoreText").textContent = String(state.score);
+  const mode=MODE_LABELS[state.mode] || MODE_LABELS.touch;
+  if($("modeText")) $("modeText").textContent = mode.title;
+  if($("modeHint")) $("modeHint").textContent = mode.hint;
+}
 function updateStats() {
   $("correctStat").textContent = state.records.filter(r => r.firstTry === "Ya").length;
   $("completedStat").textContent = state.records.length;
@@ -64,9 +108,13 @@ function updateStats() {
 }
 function updateProgress() {
   const total = targetSequence().length;
-  $("roundText").textContent = `Soalan ${Math.min(state.round + 1, total)} / ${total}`;
-  $("fullscreenRound").textContent = ` · Soalan ${Math.min(state.round + 1, total)} / ${total}`;
+  const current = Math.min(state.round + 1, total);
+  const pct = Math.round((state.round / total) * 100);
+  $("roundText").textContent = `Soalan ${current} / ${total}`;
   $("progressTrack").innerHTML = Array.from({ length: total }, (_, i) => `<span class="progress-pip ${i < state.round ? "done" : i === state.round ? "current" : ""}"></span>`).join("");
+  if($("progressTitle")) $("progressTitle").textContent = `Kemajuan ${LEVELS[state.level].title}`;
+  if($("progressMeta")) $("progressMeta").textContent = `${pct}%`;
+  if($("progressFill")) $("progressFill").style.width = `${pct}%`;
 }
 function updateTabs() {
   document.querySelectorAll(".level-tab").forEach(b => {
@@ -80,10 +128,11 @@ function updateTabs() {
 function updateGame() {
   state.hand.hoverKey = "";
   state.hand.hoverSince = 0;
+  syncOverlaySize();
   state.hand.dragId = null;
   $("carriedFruit").textContent = "";
   const total = targetSequence().length;
-  updateTabs(); updateProgress(); updateStats();
+  updateTabs(); updateProgress(); updateStats(); updateHud();
   $("hintPanel").hidden = !state.hintUsed;
   $("retryBtn").disabled = state.answered || state.round >= total;
   $("nextBtn").hidden = !state.answered;
@@ -111,18 +160,25 @@ function renderLevel2() {
   const fruitCount = Math.min(state.max + 2, 7);
   const collected = state.collected;
   const collectedSet = new Set(collected);
-  board.innerHTML = `<div class="board-content">
-    <span class="board-label">🤲 Pilih buah, kemudian masukkan ke bakul</span>
+  board.innerHTML = `<div class="board-content orchard-scene">
+    <span class="board-label">🤲 Seret atau pilih buah dari pokok ke bakul</span>
     <div class="target-number" aria-label="Nombor ${n}">${n}</div>
-    <div class="fruit-shelf" aria-label="Buah boleh dipilih">${Array.from({ length: fruitCount }, (_, i) => `<div data-gesture="fruit" data-fruit="${i}" class="fruit-token ${collectedSet.has(i) ? "used" : ""} ${state.selectedFruit === i ? "selected" : ""}" role="button" tabindex="${collectedSet.has(i) || state.answered ? "-1" : "0"}" aria-label="Pilih buah nombor ${i+1}" aria-disabled="${collectedSet.has(i) || state.answered}">${fruit()}</div>`).join("")}</div>
-    <div class="basket-zone" data-gesture="basket" role="button" tabindex="0" aria-label="Masukkan buah yang dipilih ke bakul">
-       <span class="basket-count">${collected.length} / ${n}</span>
-       <span class="basket-graphic" aria-hidden="true">🧺</span>
-       <span class="basket-items" aria-label="${collected.length} buah dalam bakul">${collected.map(() => fruit()).join(" ")}</span>
+    <div class="orchard-tree" aria-label="Pokok buah">
+      <div class="tree-top" aria-hidden="true"></div>
+      <div class="tree-trunk" aria-hidden="true"></div>
+      <div class="fruit-tree-zone" aria-label="Buah pada pokok">${Array.from({ length: fruitCount }, (_, i) => `<div data-gesture="fruit" data-fruit="${i}" class="fruit-token ${collectedSet.has(i) ? "used" : ""} ${state.selectedFruit === i ? "selected" : ""}" role="button" tabindex="${collectedSet.has(i) || state.answered ? "-1" : "0"}" aria-label="Pilih buah nombor ${i+1}" aria-disabled="${collectedSet.has(i) || state.answered}"><span class="fruit-emoji" aria-hidden="true">${fruit()}</span></div>`).join("")}</div>
     </div>
-    <div class="board-footer">
-      <button type="button" class="secondary-button" data-gesture="undo" ${collected.length===0 || state.answered ? "disabled" : ""}>↶ Keluarkan satu buah</button>
-      <button type="button" class="board-action" data-gesture="check" ${collected.length===0 || state.answered ? "disabled" : ""}>✓ Semak bakul</button>
+    <span class="tree-helper">Ambil buah dari pokok dan bawa ke bakul.</span>
+    <div class="orchard-basket-area">
+      <div class="basket-zone" data-gesture="basket" role="button" tabindex="0" aria-label="Masukkan buah yang dipilih ke bakul">
+         <span class="basket-count">${collected.length} / ${n}</span>
+         <span class="basket-graphic" aria-hidden="true">🧺</span>
+         <span class="basket-items" aria-label="${collected.length} buah dalam bakul">${collected.map(() => fruit()).join(" ")}</span>
+      </div>
+      <div class="board-footer">
+        <button type="button" class="secondary-button" data-gesture="undo" ${collected.length===0 || state.answered ? "disabled" : ""}>↶ Keluarkan satu buah</button>
+        <button type="button" class="board-action" data-gesture="check" ${collected.length===0 || state.answered ? "disabled" : ""}>✓ Semak bakul</button>
+      </div>
     </div>
   </div>`;
 }
@@ -142,16 +198,16 @@ function renderFinished() {
   const first = byLevel.filter(r => r.firstTry === "Ya").length;
   setInstruction(`Tahniah! Kamu sudah mencuba ${LEVELS[state.level].title.toLowerCase()}.`);
   $("roundText").textContent = "Misi selesai";
-  $("fullscreenRound").textContent = " · Misi selesai";
   $("progressTrack").innerHTML = targetSequence().map(() => '<span class="progress-pip done"></span>').join("");
   $("nextBtn").hidden = false;
   $("nextBtn").textContent = state.level===3 ? "Main dari Misi 1 ↻" : "Pergi ke misi seterusnya →";
-  board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Setiap percubaan ialah peluang belajar!</p><p>Guru boleh melihat rekod melalui butang <strong>Eksport rekod CSV</strong>.</p></div></div>`;
+  board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Setiap percubaan ialah peluang belajar! Skor misi semasa ialah <strong>${state.score}</strong>.</p><p>Guru boleh melihat rekod melalui butang <strong>Eksport rekod CSV</strong>.</p></div></div>`;
   $("retryBtn").disabled = true;
 }
 function resetQuestion({ preserveErrors = false } = {}) {
   state.answered = false;
   if (!preserveErrors) state.errors = 0;
+  state.lives = state.maxLives;
   state.hintUsed = false; state.selectedFruit = null; state.collected = [];
   state.startTime = Date.now();
   $("hintPanel").hidden = true;
@@ -161,33 +217,39 @@ function resetQuestion({ preserveErrors = false } = {}) {
 function switchLevel(level) {
   state.level = level;
   state.round = 0;
-  resetQuestion();
+  state.lives = state.maxLives;
+  syncFullscreenButton();
+resetQuestion();
 }
 function completeAnswer() {
   if (state.answered) return;
   state.answered = true;
+  const earned = Math.max(4, 10 - (state.errors * 2) - (state.hintUsed ? 2 : 0));
+  state.score += earned;
   state.records.push({
     at: new Date().toLocaleString("ms-MY"), level: state.level,
-    round: state.round + 1, expected: currentTarget(),
+    round: state.round + 1, expected: currentTarget(), earned,
     mode: state.mode, firstTry: state.errors === 0 ? "Ya" : "Tidak",
     errors: state.errors, hint: state.hintUsed ? "Ya" : "Tidak",
     seconds: Math.max(0, Math.round((Date.now() - state.startTime) / 1000))
   });
-  setFeedback("Bagus! Kamu berjaya!", "success");
+  setFeedback(`Bagus! Kamu berjaya! +${earned} mata`, earned >= 8 ? "reward" : "success");
   speak("Bagus! Kamu berjaya!");
   updateGame();
 }
 function wrongAnswer() {
   if (state.answered) return;
   state.errors += 1;
-  if (state.errors >= 3 && !state.hintUsed) {
+  state.lives = Math.max(0, state.maxLives - state.errors);
+  if (state.lives === 0 && !state.hintUsed) {
     showHint();
-    setFeedback("Tak mengapa. Jom guna petunjuk, kemudian cuba lagi!", "error");
-    speak("Mari guna petunjuk. Kemudian cuba lagi.");
+    setFeedback("Tak mengapa. Jom guna petunjuk dulu, kemudian cuba lagi!", "error");
+    speak("Tak mengapa. Mari guna petunjuk.");
   } else {
     setFeedback("Belum tepat. Tidak mengapa, cuba kira satu demi satu!", "error");
     speak("Cuba lagi. Kira satu demi satu.");
   }
+  updateHud();
 }
 function answerChoice(v) {
   if (state.answered) return;
@@ -237,19 +299,11 @@ function advance() {
   if (!state.answered) return;
   state.round++;
   if (state.round >= total) updateGame();
-  else resetQuestion();
+  else syncFullscreenButton();
+resetQuestion();
 }
 function handleAction(target) {
-  if (!target || !target.dataset || target.disabled || target.getAttribute("aria-disabled") === "true") return;
-  // Navigation, help and sound stay available after the correct answer and on the end screen.
-  switch (target.dataset.gesture) {
-    case "next": advance(); return;
-    case "retry": if (!state.answered) resetQuestion({preserveErrors:true}); return;
-    case "speak": speak($("instruction").textContent); return;
-    case "hint": if (!state.answered && state.round < targetSequence().length) { showHint(); speak($("hintText").textContent); } return;
-    case "fullscreen": void toggleFullscreen(); return;
-  }
-  if (state.answered) return;
+  if (!target || !target.dataset || state.answered) return;
   switch (target.dataset.gesture) {
     case "number": case "group": answerChoice(target.dataset.value); break;
     case "fruit": selectFruit(Number(target.dataset.fruit)); break;
@@ -303,9 +357,11 @@ function insideBasket(x,y) {
 const cursor = $("handCursor");
 function cameraMessage(msg) { $("cameraStatus").textContent = msg; const t=$("cameraTag"); if(t) t.textContent = msg; }
 function closeHandCursor() {
-  cursor.hidden = true; $("carriedFruit").textContent="";
+  cursor.hidden = true; if(handCursorSymbol) handCursorSymbol.textContent = "👆"; $("carriedFruit").textContent="";
   state.hand.hoverKey=""; state.hand.dragId=null; state.hand.pinched=false; state.hand.lastLandmarks=null;
-  state.hand.cursorX=null; state.hand.cursorY=null;
+  boardWrap?.classList.remove("webcam-live");
+  if(starTrailLayer) starTrailLayer.innerHTML="";
+  clearHandOverlay();
 }
 async function stopCamera() {
   const hand=state.hand;
@@ -317,7 +373,6 @@ async function stopCamera() {
   $("cameraVideo").srcObject=null;
   $("cameraPreview").hidden=true;
   hand.lastVideoTime=-1;
-  boardWrap?.classList.remove("webcam-live");
   closeHandCursor();
   $("cameraBtn").textContent="📷 Hidupkan webcam";
   cameraMessage("Kamera dimatikan. Sentuhan dan mouse masih boleh digunakan.");
@@ -353,7 +408,6 @@ async function startCamera() {
     if (state.mode === "touch" || h.stream !== stream) { await stopCamera(); return; }
     h.active=true;
     $("cameraPreview").hidden=false;
-    boardWrap?.classList.add("webcam-live");
     $("cameraBtn").textContent="⛔ Matikan webcam";
     cameraMessage(state.mode==="pinch"?"Kamera aktif. Cubit untuk memilih; lepaskan buah di atas bakul.":"Kamera aktif. Halakan jari dan tunggu bulatan penuh.");
     h.raf=requestAnimationFrame(detectLoop);
@@ -364,16 +418,9 @@ async function startCamera() {
   } finally { h.busy=false; $("cameraBtn").disabled=false; }
 }
 function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
-function isGameFullscreen() {
-  const stage=$("gameStage");
-  return fullscreenElement() === stage || stage.classList.contains("theater-mode");
-}
 function gestureTargetAt(x,y){
   const node=document.elementFromPoint(x,y)?.closest?.("[data-gesture]");
-  // Normally gestures stay within the board. In fullscreen, allow the buttons on
-  // top of the webcam too (Next, Retry, Hint, Sound, Exit fullscreen).
-  const permitted=isGameFullscreen() ? $("gameStage") : board;
-  return node && permitted.contains(node) && !node.hasAttribute("disabled") && !node.hidden && node.getAttribute("aria-disabled")!=="true" ? node:null;
+  return node && board.contains(node) && !node.hasAttribute("disabled") && node.getAttribute("aria-disabled")!=="true" ? node:null;
 }
 function detectLoop(now) {
   const h=state.hand;
@@ -388,24 +435,19 @@ function detectLoop(now) {
     if(!result.landmarks?.length) { closeHandCursor();cameraMessage("Tangan belum dikesan. Letakkan satu tangan di hadapan kamera.");return; }
     const l=result.landmarks[0];
     const tip=l[8],thumb=l[4];
-    // In fullscreen the webcam covers the entire game, including its controls.
-    // Use the actual webcam cover dimensions for precise cursor mapping.
-    const fullscreen=isGameFullscreen();
-    const r=(fullscreen ? $("gameStage") : board).getBoundingClientRect();
-    const scale=Math.max(r.width/v.videoWidth,r.height/v.videoHeight);
-    const coverWidth=v.videoWidth*scale, coverHeight=v.videoHeight*scale;
-    const cropX=(coverWidth-r.width)/2, cropY=(coverHeight-r.height)/2;
-    const wantedX=r.left+(1-tip.x)*coverWidth-cropX;
-    const wantedY=r.top+tip.y*coverHeight-cropY;
+    // The camera preview is mirrored; mirror the hand x coordinate as well.
+    const r=board.getBoundingClientRect();
+    const wantedX=r.left+(1-tip.x)*r.width;
+    const wantedY=r.top+tip.y*r.height;
     const alpha=.46;
     h.cursorX=h.cursorX===null?wantedX:h.cursorX+(wantedX-h.cursorX)*alpha;
     h.cursorY=h.cursorY===null?wantedY:h.cursorY+(wantedY-h.cursorY)*alpha;
     cursor.hidden=false;
-    // The pointer belongs to boardWrap ordinarily, but to the viewport in fullscreen.
-    const local=boardWrap.getBoundingClientRect();
-    cursor.style.left=(fullscreen?h.cursorX:h.cursorX-local.left)+"px";
-    cursor.style.top=(fullscreen?h.cursorY:h.cursorY-local.top)+"px";
+    cursor.style.left=h.cursorX+"px";cursor.style.top=h.cursorY+"px";
     h.lastLandmarks=l;
+    boardWrap?.classList.add("webcam-live");
+    drawHandOverlay(l);
+    maybeEmitTrail(now);
     const refSize=Math.max(.055,distance(l[0],l[9]));
     const pinchRatio=distance(thumb,tip)/refSize;
     if(state.mode==="pinch") processPinch(pinchRatio,now);
@@ -418,9 +460,10 @@ function detectLoop(now) {
 }
 function processDwell(now) {
   const h=state.hand;
+  if(handCursorSymbol) handCursorSymbol.textContent="☝️";
   const el=gestureTargetAt(h.cursorX,h.cursorY);
   const key=el ? `${el.dataset.gesture}:${el.dataset.value??el.dataset.fruit??""}` : "";
-  if(!key) {h.hoverKey="";cursor.style.setProperty("--progress","0%");return;}
+  if(!key || state.answered) {h.hoverKey="";cursor.style.setProperty("--progress","0%");return;}
   if(key!==h.hoverKey){h.hoverKey=key;h.hoverSince=now;cursor.style.setProperty("--progress","0%");return;}
   const pct=Math.min(100,Math.max(0,((now-h.hoverSince)/1400)*100));
   cursor.style.setProperty("--progress",pct+"%");
@@ -433,10 +476,11 @@ function processPinch(ratio,now) {
   const h=state.hand;
   const closing=!h.pinched&&ratio<.42;
   const opening=h.pinched&&ratio>.66;
+  if(handCursorSymbol) handCursorSymbol.textContent=h.pinched?"🤏":"👆";
   cursor.style.setProperty("--progress",h.pinched?"100%":"0%");
   if(closing) {
     h.pinched=true;
-    if(now<h.cooldownUntil) return;
+    if(now<h.cooldownUntil||state.answered) return;
     const el=gestureTargetAt(h.cursorX,h.cursorY);
     if(el && el.dataset.gesture==="fruit" && state.level===2) {
       h.dragId=Number(el.dataset.fruit);$("carriedFruit").textContent=fruit();
@@ -455,6 +499,7 @@ function processPinch(ratio,now) {
 }
 function updateMode(mode) {
   state.mode=mode;
+  boardWrap?.classList.toggle("webcam-fruitless", mode!=="touch");
   document.querySelectorAll(".mode-btn").forEach(b=>{
     const active=b.dataset.mode===mode;b.classList.toggle("is-active",active);b.setAttribute("aria-pressed",String(active));
   });
@@ -468,58 +513,39 @@ function updateMode(mode) {
     else cameraMessage(mode==="point"?"Halakan jari dan tunggu bulatan penuh.":"Cubit jari untuk memilih atau menyeret buah.");
     state.hand.hoverKey="";state.hand.pinched=false;state.hand.dragId=null;
   }
+  updateHud();
 }
 
 
 function fullscreenElement(){return document.fullscreenElement || document.webkitFullscreenElement || null;}
 async function toggleFullscreen(){
-  const stage=$("gameStage");
-  try {
-    if(fullscreenElement() === stage){
+  const main=$("main");
+  const btn=$("fullscreenBtn");
+  try{
+    if(fullscreenElement()){
       if(document.exitFullscreen) await document.exitFullscreen();
       else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
-    } else if(stage.classList.contains("theater-mode")) {
-      stage.classList.remove("theater-mode");
-      document.body.classList.remove("game-theater");
-    } else if(stage.requestFullscreen){
-      await stage.requestFullscreen();
-    } else if(stage.webkitRequestFullscreen){
-      stage.webkitRequestFullscreen();
-    } else {
-      stage.classList.add("theater-mode");
-      document.body.classList.add("game-theater");
+    }else{
+      if(main.requestFullscreen) await main.requestFullscreen();
+      else if(main.webkitRequestFullscreen) main.webkitRequestFullscreen();
     }
   }catch(err){
-    console.warn("Full screen not supported",err);
-    // iOS Safari can reject element fullscreen: provide immersive in-page alternative.
-    stage.classList.add("theater-mode");
-    document.body.classList.add("game-theater");
+    console.warn("Fullscreen not available",err);
+    setFeedback("Fullscreen tidak disokong pada peranti ini. Teruskan bermain dalam paparan biasa.");
   }
-  syncFullscreenButton();
 }
 function syncFullscreenButton(){
-  const stage=$("gameStage");
-  const active=fullscreenElement()===stage || stage.classList.contains("theater-mode");
+  const active=!!fullscreenElement();
   const btn=$("fullscreenBtn");
+  if(!btn) return;
   btn.classList.toggle("is-active",active);
   btn.setAttribute("aria-pressed",String(active));
-  btn.textContent=active?"✕ Keluar fullscreen":"⛶ Fullscreen game";
-  // Keep the hand pointer visible ABOVE the webcam and fullscreen controls.
-  if(active) stage.appendChild(cursor);
-  else boardWrap.appendChild(cursor);
-  // The camera mapping uses a different viewport when fullscreen is active.
-  if(state.hand.fullscreenMapping !== active) {
-    state.hand.fullscreenMapping=active;
-    state.hand.cursorX=null; state.hand.cursorY=null;
-    state.hand.hoverKey=""; state.hand.hoverSince=0;
-    cursor.hidden=true;
-  }
+  btn.textContent=active?"🡼 Keluar fullscreen":"⛶ Fullscreen game";
 }
 // ---------- App controls ----------
 document.querySelectorAll(".mode-btn").forEach(b=>b.addEventListener("click",()=>updateMode(b.dataset.mode)));
 $("cameraBtn").addEventListener("click",()=>state.hand.active?stopCamera():startCamera());
 $("hintBtn").addEventListener("click",()=>{if(state.answered)return;showHint();speak($("hintText").textContent)});
-$("gameHintBtn").addEventListener("click",()=>handleAction($("gameHintBtn")));
 $("speakBtn").addEventListener("click",()=>speak($("instruction").textContent));
 $("voiceBtn").addEventListener("click",()=>{
   state.sound=!state.sound;
@@ -536,14 +562,14 @@ resetQuestion();
 });
 $("resetBtn").addEventListener("click",()=>{
   if(!window.confirm("Mulakan semula dan padam rekod pembelajaran sesi ini?")) return;
-  state.records=[];state.max=Number($("rangeSelect").value);switchLevel(1);
+  state.records=[];state.score=0;state.max=Number($("rangeSelect").value);switchLevel(1);
   setFeedback("Sesi baharu bermula. Jom kira buah!");
 });
 $("downloadBtn").addEventListener("click",()=>{
   if(!state.records.length){setFeedback("Tiada rekod lagi. Main sekurang-kurangnya satu soalan sebelum mengeksport.");return;}
-  const headings=["Tarikh masa","Tahap","Soalan","Sasaran nombor","Kawalan","Betul cubaan pertama","Bilangan kesilapan","Bantuan digunakan","Tempoh saat"];
+  const headings=["Tarikh masa","Tahap","Soalan","Sasaran nombor","Mata diperoleh","Kawalan","Betul cubaan pertama","Bilangan kesilapan","Bantuan digunakan","Tempoh saat"];
   const safe=(value)=>'"'+String(value).replace(/^[=+@-]/,"'").replace(/"/g,'""')+'"';
-  const data=state.records.map(r=>[r.at,r.level,r.round,r.expected,r.mode,r.firstTry,r.errors,r.hint,r.seconds]);
+  const data=state.records.map(r=>[r.at,r.level,r.round,r.expected,r.earned ?? "",r.mode,r.firstTry,r.errors,r.hint,r.seconds]);
   const csv="\ufeff"+[headings,...data].map(line=>line.map(safe).join(",")).join("\r\n");
   const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   const a=document.createElement("a");a.href=url;a.download="rekod-misi-bakul-nombor.csv";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
@@ -554,5 +580,9 @@ if($("fullscreenBtn")) $("fullscreenBtn").addEventListener("click",toggleFullscr
 document.addEventListener("fullscreenchange",syncFullscreenButton);
 document.addEventListener("webkitfullscreenchange",syncFullscreenButton);
 window.addEventListener("pagehide",()=>{if(state.hand.stream)state.hand.stream.getTracks().forEach(t=>t.stop())});
+window.addEventListener("resize",syncOverlaySize);
+document.addEventListener("fullscreenchange",()=>setTimeout(syncOverlaySize,60));
+document.addEventListener("webkitfullscreenchange",()=>setTimeout(syncOverlaySize,60));
+syncOverlaySize();
 syncFullscreenButton();
 resetQuestion();

@@ -78,24 +78,24 @@
         <div class="progress-track" id="progressTrack" aria-label="Kemajuan bagi tahap ini"></div>
 
         <section class="game-card" id="gameStage" aria-label="Permainan numerasi">
-          <div class="game-toolbar"><span class="game-toolbar-label">🎮 RUANG PERMAINAN <span class="fullscreen-round" id="fullscreenRound" aria-hidden="true"></span></span><button type="button" class="fullscreen-btn" id="fullscreenBtn" data-gesture="fullscreen" aria-pressed="false">⛶ Fullscreen game</button></div>
+          <div class="game-toolbar"><span class="game-toolbar-label">🎮 RUANG PERMAINAN</span><button type="button" class="fullscreen-btn" id="fullscreenBtn" aria-pressed="false">⛶ Fullscreen game</button></div>
           <div class="instruction-box">
             <div class="instruction-icon" aria-hidden="true">📣</div>
             <div><span class="instruction-label">MISI SEKARANG</span><p id="instruction">Berapa biji buah yang kamu lihat?</p></div>
-            <button type="button" class="speak-btn" id="speakBtn" data-gesture="speak" aria-label="Dengar arahan">🔈</button>
+            <button type="button" class="speak-btn" id="speakBtn" aria-label="Dengar arahan">🔈</button>
           </div>
           <div class="board-wrap" id="boardWrap">
             <video id="cameraVideo" class="board-camera" autoplay muted playsinline aria-label="Video webcam sebagai latar permainan"></video>
+            <div id="starTrailLayer" class="star-trail-layer" aria-hidden="true"></div>
             <div class="game-board" id="gameBoard" aria-live="off"></div>
             <div class="webcam-badge" aria-hidden="true">● WEBCAM AKTIF</div>
-            <div id="handCursor" class="hand-cursor" hidden aria-hidden="true"><span class="cursor-ring"></span><span id="carriedFruit" class="carried-fruit"></span></div>
+            <div id="handCursor" class="hand-cursor" hidden aria-hidden="true"><span class="cursor-ring"></span><span id="handCursorSymbol" class="hand-cursor-symbol">👆</span><span id="carriedFruit" class="carried-fruit"></span></div>
           </div>
           <div id="hintPanel" class="hint-panel" hidden><strong>💡 Petunjuk</strong><span id="hintText"></span></div>
           <div class="feedback" id="feedback" role="status" aria-live="polite"><span class="feedback-icon">🌟</span><span id="feedbackText">Jom mulakan! Pilih jawapan kamu.</span></div>
           <div class="game-actions">
-            <button type="button" class="secondary-button fullscreen-hint" id="gameHintBtn" data-gesture="hint">💡 Bantuan</button>
-            <button type="button" class="secondary-button" id="retryBtn" data-gesture="retry">🔄 Cuba soalan ini lagi</button>
-            <button type="button" class="primary-button" id="nextBtn" data-gesture="next" hidden>Soalan seterusnya →</button>
+            <button type="button" class="secondary-button" id="retryBtn">🔄 Cuba soalan ini lagi</button>
+            <button type="button" class="primary-button" id="nextBtn" hidden>Soalan seterusnya →</button>
           </div>
         </section>
 
