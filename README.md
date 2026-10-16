@@ -71,3 +71,10 @@ Kemas kini terkini: fullscreen fokus pada ruang permainan sahaja; webcam dipapar
 - Julat **1–3**: satu set 3 pasangan; **1–5**: satu set 5 pasangan; **1–10**: dua set 5 pasangan, merangkumi semua nombor 1 hingga 10 tanpa pengulangan dalam misi.
 - Boleh dimainkan dengan sentuhan, mouse, papan kekunci, Point & Select dan Pinch & Drag (gestur memilih dua sasaran).
 - Misi 1, Misi 2, webcam, fullscreen, bakul dan ciri sedia ada kekal daripada master v1.16.
+
+
+## Kemas kini v1.18 — Garisan seperti pen & Misi 2 manual
+- Misi 3: letakkan jari/mouse pada nombor sebelah kiri, **tahan dan seret** sampai ke kumpulan buah sebelah kanan, kemudian lepaskan. Garisan warna mengikuti jari secara langsung. Garisan yang betul kekal dan setiap padanan mendapat warna yang berlainan; jawapan salah dipaparkan sementara.
+- Untuk mod webcam **Pinch & Drag**, cubit pada nombor, gerakkan tangan hingga ke kumpulan buah, kemudian buka jari untuk melengkapkan padanan. Mod Point & Select/papan kekunci kekal sebagai pilihan aksesibiliti bagi murid yang tidak boleh menyeret.
+- Misi 2: setelah bilangan buah cukup, murid mesti menekan **Soalan seterusnya →** untuk maju. Tidak berpindah automatik. Dalam mod fullscreen, butang Seterusnya akan muncul hanya selepas jawapan betul; boleh ditekan melalui mouse, sentuhan atau gesture webcam.
+- Semua fail perlu diganti serentak di root GitHub Pages. HTML merujuk styles.css?v=118 dan game.js?v=118 untuk cache-busting.

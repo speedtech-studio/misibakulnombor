@@ -24,6 +24,7 @@ const LEVELS = {
   3: { title: "Misi 3 · Padankan!", sub: "Sambungkan nombor dengan kumpulan buah menggunakan garisan." }
 };
 const ICONS = ["🍎", "🍊", "🍐", "🍓", "🍋"];
+const MATCH_COLORS = ["#f05b71", "#2b9de5", "#9554db", "#e29521", "#17896e"];
 const state = {
   level: 1, round: 0, max: 5, mode: "touch", sound: true,
   answered: false, errors: 0, hintUsed: false,
@@ -32,7 +33,7 @@ const state = {
     lastVideoTime: -1, lastDetectAt: 0, cursorX: null, cursorY: null,
     pinched: false, dragId: null, hoverKey: "", hoverSince: 0,
     cooldownUntil: 0, busy: false, lastLandmarks: null, drawRaf: null, lastTrailAt: 0 },
-  pointerDrag: null, score: 0, lives: 3, maxLives: 3, autoTimer: null, sequence: [3,1,5,2,4], matching: null, matchErrorTimer: null
+  pointerDrag: null, score: 0, lives: 3, maxLives: 3, autoTimer: null, sequence: [3,1,5,2,4], matching: null, matchErrorTimer: null, matchPointer: null
 };
 
 function shuffleList(list) {
@@ -185,6 +186,7 @@ function updateGame() {
   $("retryBtn").disabled = state.answered || state.round >= total;
   $("nextBtn").hidden = !state.answered;
   $("nextBtn").textContent = state.round === total - 1 ? "Lihat pencapaian →" : "Soalan seterusnya →";
+  $("gameStage").classList.toggle("misi2-next-ready",state.level===2 && state.answered);
   if (state.round >= total) return renderFinished();
   if (state.level === 1) renderLevel1();
   else if (state.level === 2) renderLevel2();
@@ -241,24 +243,24 @@ function renderLevel3() {
   setInstruction("Padankan nombor dengan kumpulan buah yang sama bilangannya.");
   if (!state.matching || state.matching.round !== state.round) {
     const values=matchingBatchValues();
-    state.matching={round:state.round,values,numbers:shuffleList(values),groups:shuffleList(values),selected:null,matched:[],wrong:null};
+    state.matching={round:state.round,values,numbers:shuffleList(values),groups:shuffleList(values),selected:null,matched:[],traces:{},dragging:null,wrong:null};
   }
   const m=state.matching;
   board.innerHTML = `<div class="board-content matching-scene">
-    <span class="board-label">🔗 Pilih nombor, kemudian kumpulan buah. Garisan akan muncul!</span>
+    <span class="board-label">✏️ Tarik garisan dari nombor ke kumpulan buah seperti padanan di kertas!</span>
     <div class="matching-progress" id="matchingProgress" role="status">${m.matched.length} / ${m.values.length} padanan siap</div>
-    <div class="matching-board" id="matchingBoard" aria-label="Permainan padankan nombor dengan kuantiti">
+    <div class="matching-board" id="matchingBoard" aria-label="Seret dari nombor ke kumpulan buah untuk memadankan">
       <svg class="matching-lines" id="matchingLines" aria-hidden="true" preserveAspectRatio="none"></svg>
       <div class="matching-column" aria-label="Nombor">
         <strong class="matching-heading">NOMBOR</strong>
-        ${m.numbers.map(n=>`<button type="button" class="match-number" data-gesture="match-number" data-value="${n}" aria-label="Pilih nombor ${n}" aria-pressed="false" ${m.matched.includes(n)||state.answered ? "disabled" : ""}>${n}</button>`).join("")}
+        ${m.numbers.map(n=>`<button type="button" class="match-number" data-gesture="match-number" data-value="${n}" aria-label="Seret garisan bermula daripada nombor ${n}" aria-pressed="false" ${m.matched.includes(n)||state.answered ? "disabled" : ""}>${n}</button>`).join("")}
       </div>
       <div class="matching-column" aria-label="Kumpulan buah">
         <strong class="matching-heading">BUAH</strong>
         ${m.groups.map((n,i)=>`<button type="button" class="match-group" data-gesture="match-group" data-value="${n}" aria-label="Kumpulan ${n} biji buah" ${m.matched.includes(n)||state.answered ? "disabled" : ""}><span class="match-fruits" aria-hidden="true">${Array.from({length:n},()=>`<span class="match-fruit">${fruit()}</span>`).join("")}</span><small>Pilihan ${i+1}</small></button>`).join("")}
       </div>
     </div>
-    <p class="matching-help">🟢 Garisan hijau = betul &nbsp; · &nbsp; 🔴 Garisan merah = cuba lagi</p>
+    <p class="matching-help">🌈 Tarik jari / mouse seperti pen • Garisan betul kekal dengan warna berbeza!</p>
   </div>`;
   updateMatchingVisuals();
   requestAnimationFrame(drawMatchingLines);
@@ -268,7 +270,7 @@ function updateMatchingVisuals(){
   if(!m || state.level!==3) return;
   board.querySelectorAll("[data-gesture='match-number']").forEach(button=>{
     const value=Number(button.dataset.value);
-    button.classList.toggle("is-picked",value===m.selected);
+    button.classList.toggle("is-picked",value===m.selected || m.dragging?.n===value);
     button.classList.toggle("is-matched",m.matched.includes(value));
     button.disabled=m.matched.includes(value)||state.answered;
     button.setAttribute("aria-pressed",String(value===m.selected));
@@ -282,54 +284,92 @@ function updateMatchingVisuals(){
   if(counter) counter.textContent=`${m.matched.length} / ${m.values.length} padanan siap`;
   requestAnimationFrame(drawMatchingLines);
 }
+function matchBoardPoint(clientX,clientY){
+  const rect=$("matchingBoard")?.getBoundingClientRect();
+  if(!rect || !rect.width || !rect.height) return null;
+  return [Math.max(0,Math.min(1,(clientX-rect.left)/rect.width)),Math.max(0,Math.min(1,(clientY-rect.top)/rect.height))];
+}
+function matchingAnchor(n,side){
+  const grid=$("matchingBoard"), node=grid?.querySelector(`[data-gesture="${side==='left'?'match-number':'match-group'}"][data-value="${n}"]`);
+  if(!grid||!node)return null;
+  const r=node.getBoundingClientRect();
+  return matchBoardPoint(side==='left'?r.right-4:r.left+4,r.top+r.height/2);
+}
+function matchingPath(points, rect, from=null, to=null){
+  if(!points || points.length<2)return "";
+  // Anchors stay aligned with their numbers/fruit groups after screen rotation or resize.
+  const first=points[0],last=points[points.length-1];
+  const a=from||first,b=to||last;
+  return points.map((pt,i)=>{
+    const t=points.length===1?0:i/(points.length-1);
+    const x=pt[0]+(a[0]-first[0])*(1-t)+(b[0]-last[0])*t;
+    const y=pt[1]+(a[1]-first[1])*(1-t)+(b[1]-last[1])*t;
+    return `${i?'L':'M'} ${(x*rect.width).toFixed(1)} ${(y*rect.height).toFixed(1)}`;
+  }).join(" ");
+}
 function drawMatchingLines(){
-  const m=state.matching, container=$("matchingBoard"), svg=$("matchingLines");
-  if(state.level!==3||!m||!container||!svg) return;
+  const m=state.matching,container=$("matchingBoard"),svg=$("matchingLines");
+  if(state.level!==3||!m||!container||!svg)return;
   const rect=container.getBoundingClientRect();
   if(rect.width<=0||rect.height<=0)return;
   svg.setAttribute("viewBox",`0 0 ${rect.width} ${rect.height}`);
-  const line=(n,g,color,cls)=>{
-    const left=container.querySelector(`[data-gesture="match-number"][data-value="${n}"]`);
-    const right=container.querySelector(`[data-gesture="match-group"][data-value="${g}"]`);
-    if(!left||!right)return '';
-    const a=left.getBoundingClientRect(),b=right.getBoundingClientRect();
-    const x1=a.right-rect.left-3,y1=a.top+a.height/2-rect.top;
-    const x2=b.left-rect.left+3,y2=b.top+b.height/2-rect.top;
-    return `<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="7" stroke-linecap="round"/>`;
+  const makePath=(n,g,points,color,cls)=>{
+    const a=matchingAnchor(n,'left'),b=g===null?null:matchingAnchor(g,'right');
+    if(!a||!points?.length)return '';
+    const all=points.length<2?[a,points[0]]:points;
+    const d=matchingPath(all,rect,a,b||null);
+    return `<path class="${cls}" d="${d}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`;
   };
-  svg.innerHTML=m.matched.map(n=>line(n,n,"#25a962","correct-match-line")).join("")
-    +(m.wrong?line(m.wrong.n,m.wrong.g,"#ed5361","wrong-match-line"):"");
+  svg.innerHTML=m.matched.map(n=>makePath(n,n,m.traces[n],MATCH_COLORS[m.numbers.indexOf(n)%MATCH_COLORS.length],"correct-match-line")).join("")
+    +(m.wrong?makePath(m.wrong.n,m.wrong.g,m.wrong.points,"#ee4758","wrong-match-line"):"")
+    +(m.dragging?makePath(m.dragging.n,null,m.dragging.points,MATCH_COLORS[m.numbers.indexOf(m.dragging.n)%MATCH_COLORS.length],"live-match-line"):"");
 }
-function handleMatchChoice(node){
-  if(state.level!==3||state.answered||!state.matching)return;
-  const m=state.matching,value=Number(node.dataset.value);
-  if(m.matched.includes(value)||m.wrong)return;
-  if(node.dataset.gesture==="match-number"){
-    m.selected=value;
-    setFeedback(`Nombor ${value} dipilih. Sekarang cari kumpulan buah yang sepadan.`);
-    updateMatchingVisuals();
-    return;
+function startMatchingDrag(value,x,y){
+  if(state.level!==3||state.answered||!state.matching)return false;
+  const m=state.matching;
+  if(m.matched.includes(value)||m.wrong)return false;
+  const a=matchingAnchor(value,'left');
+  if(!a)return false;
+  const p=matchBoardPoint(x,y) || a;
+  m.selected=null;
+  m.dragging={n:value,points:[a,p]};
+  setFeedback(`Tarik garisan dari nombor ${value} ke kumpulan buah yang sama.`);
+  updateMatchingVisuals();
+  return true;
+}
+function moveMatchingDrag(x,y){
+  const m=state.matching;
+  if(!m?.dragging||state.level!==3)return;
+  const pt=matchBoardPoint(x,y);
+  if(!pt)return;
+  const pts=m.dragging.points;
+  const last=pts[pts.length-1];
+  if(!last || Math.hypot(last[0]-pt[0],last[1]-pt[1])>0.007){
+    pts.push(pt);
+    // Bound memory on long movements while retaining a hand-drawn look.
+    if(pts.length>180)pts.splice(1,1);
+    drawMatchingLines();
   }
-  if(m.selected===null){
-    setFeedback("Pilih satu nombor di sebelah kiri dahulu.");
-    speak("Pilih nombor dahulu.");
-    return;
-  }
-  const picked=m.selected;
-  if(picked===value){
-    m.matched.push(value);
+}
+function completeMatchingPair(n,value,points){
+  const m=state.matching;
+  if(!m||state.answered)return;
+  const b=matchingAnchor(value,'right');
+  const route=points?.slice()||[];
+  if(b)route.push(b);
+  if(n===value){
+    m.matched.push(n);
+    m.traces[n]=route;
     m.selected=null;
     setFeedback(`Hebat! Nombor ${value} berjaya dipadankan!`,"success");
     speak("Bagus! Padanan betul.");
     updateMatchingVisuals();
-    if(m.matched.length===m.values.length){
-      completeAnswer();
-    }
+    if(m.matched.length===m.values.length)completeAnswer();
   }else{
     state.errors++;
-    m.wrong={n:picked,g:value};
+    m.wrong={n,g:value,points:route};
     m.selected=null;
-    setFeedback("Belum tepat. Cuba padankan semula!","error");
+    setFeedback("Belum tepat. Cuba tarik garisan semula!","error");
     speak("Cuba lagi.");
     updateMatchingVisuals();
     if(state.matchErrorTimer)clearTimeout(state.matchErrorTimer);
@@ -339,24 +379,61 @@ function handleMatchChoice(node){
     },850);
   }
 }
+function finishMatchingDrag(x,y,target=null){
+  const m=state.matching;
+  if(!m?.dragging)return;
+  const drag=m.dragging;
+  moveMatchingDrag(x,y);
+  m.dragging=null;
+  const group=(target || document.elementFromPoint(x,y))?.closest?.('[data-gesture="match-group"]');
+  if(!group||!$("matchingBoard")?.contains(group)||group.disabled||m.matched.includes(Number(group.dataset.value))){
+    setFeedback("Garisan belum sampai ke buah. Cuba tarik sampai ke kumpulan buah.");
+    updateMatchingVisuals();
+    return;
+  }
+  completeMatchingPair(drag.n,Number(group.dataset.value),drag.points);
+}
+// Alternative only for keyboard and Point & Select webcam mode: drag is the primary interaction.
+function handleMatchChoice(node){
+  if(state.level!==3||state.answered||!state.matching)return;
+  const m=state.matching,value=Number(node.dataset.value);
+  if(m.matched.includes(value)||m.wrong)return;
+  if(node.dataset.gesture==='match-number'){
+    m.selected=value;
+    setFeedback(`Nombor ${value} dipilih. Halakan ke kumpulan buah yang sepadan.`);
+    updateMatchingVisuals();
+    return;
+  }
+  if(m.selected===null){
+    setFeedback("Mulakan garisan pada nombor di sebelah kiri.");
+    return;
+  }
+  const n=m.selected;
+  const a=matchingAnchor(n,'left'),b=matchingAnchor(value,'right');
+  if(a&&b)completeMatchingPair(n,value,[a,b]);
+}
 function renderFinished() {
   const byLevel = state.records.filter(r => r.level === state.level);
   const first = byLevel.filter(r => r.firstTry === "Ya").length;
   setInstruction(`Tahniah! Kamu sudah mencuba ${LEVELS[state.level].title.toLowerCase()}.`);
   $("roundText").textContent = "Misi selesai";
   $("progressTrack").innerHTML = Array.from({length:roundCount()},()=>'<span class="progress-pip done"></span>').join("");
-  $("nextBtn").hidden = true;
+  $("nextBtn").hidden = state.level!==2;
+  $("nextBtn").textContent = "Pergi ke Misi 3 →";
+  $("gameStage").classList.toggle("misi2-next-ready",state.level===2);
   $("retryBtn").hidden = true;
   board.innerHTML = `<div class="board-content"><div class="finished"><div class="finished-emoji">🏆</div><h3>Syabas, peneroka nombor!</h3><p>Kamu sudah menyiapkan misi ini. Ada ${byLevel.length} soalan yang diselesaikan dan ${first} jawapan betul pada cubaan pertama. Skor misi semasa ialah <strong>${state.score}</strong>.</p><p>${state.level===3 ? "Permainan akan bermula semula secara automatik." : "Misi seterusnya akan bermula secara automatik."}</p></div></div>`;
   $("retryBtn").disabled = true;
   burstConfetti(56);
-  scheduleAutoFlow(()=>advance(), 1900);
+  if (state.level !== 2) scheduleAutoFlow(()=>advance(), 1900);
 }
 function resetQuestion({ preserveErrors = false } = {}) {
   clearAutoFlow();
   if(state.matchErrorTimer){clearTimeout(state.matchErrorTimer);state.matchErrorTimer=null;}
   state.matching=null;
+  state.matchPointer=null;
   state.answered = false;
+  $("gameStage").classList.remove("misi2-next-ready");
   if (!preserveErrors) state.errors = 0;
   state.lives = preserveErrors ? Math.max(1, state.maxLives - Math.min(state.errors, state.maxLives - 1)) : state.maxLives;
   state.hintUsed = false; state.selectedFruit = null; state.collected = [];
@@ -393,9 +470,11 @@ function completeAnswer() {
   speak("Bagus! Kamu berjaya!");
   updateGame();
   window.clearTimeout(state.autoTimer);
-  state.autoTimer = window.setTimeout(() => {
-    advance();
-  }, 1400);
+  if(state.level !== 2){
+    state.autoTimer = window.setTimeout(() => {
+      advance();
+    }, 1400);
+  }
 }
 function wrongAnswer() {
   if (state.answered) return;
@@ -449,8 +528,8 @@ function showHint() {
   const n = currentTarget();
   let hint;
   if (state.level===1) hint = `Sentuh atau kira buah satu demi satu. Cuba sebut: ${Array.from({length:n},(_,i)=>i+1).join(", ")}.`;
-  else if (state.level===2) hint = `Lihat nombor ${n}. Ambil satu buah pada satu masa. Masukkan ke bakul sehingga ada ${n} buah. Permainan akan semak secara automatik.`;
-  else hint = "Pilih satu nombor di kiri. Kira buah di sebelah kanan satu demi satu, kemudian tekan kumpulan yang sama banyak. Garisan hijau akan kekal.";
+  else if (state.level===2) hint = `Lihat nombor ${n}. Ambil buah satu demi satu sehingga ada ${n} buah. Apabila betul, tekan butang Soalan seterusnya.`;
+  else hint = "Letakkan jari atau mouse pada nombor, kemudian tarik garisan hingga ke kumpulan buah yang sama banyak. Garisan betul akan kekal dengan warna yang berbeza.";
   $("hintText").textContent = hint;
 }
 function advance() {
@@ -467,7 +546,12 @@ function advance() {
 resetQuestion();
 }
 function handleAction(target) {
-  if (!target || !target.dataset || state.answered) return;
+  if (!target || !target.dataset) return;
+  if(target.dataset.gesture==='next'){
+    if(state.level===2 && state.answered) advance();
+    return;
+  }
+  if(state.answered)return;
   switch (target.dataset.gesture) {
     case "number": case "group": answerChoice(target.dataset.value); break;
     case "match-number": case "match-group": handleMatchChoice(target); break;
@@ -477,10 +561,34 @@ function handleAction(target) {
     case "undo": undoFruit(); break;
   }
 }
+// Misi 3: follow the learner's actual finger/mouse path, like drawing with a pen.
+board.addEventListener("pointerdown", (ev) => {
+  if(state.level!==3 || state.answered || state.matchPointer)return;
+  const source=ev.target.closest?.('[data-gesture="match-number"]');
+  if(!source || source.disabled || !board.contains(source))return;
+  if(!startMatchingDrag(Number(source.dataset.value),ev.clientX,ev.clientY))return;
+  state.matchPointer=ev.pointerId;
+  ev.preventDefault();
+  try{$("matchingBoard")?.setPointerCapture(ev.pointerId);}catch(_){ }
+});
+board.addEventListener("pointermove", (ev) => {
+  if(state.level===3 && state.matchPointer===ev.pointerId)moveMatchingDrag(ev.clientX,ev.clientY);
+});
+board.addEventListener("pointerup", (ev) => {
+  if(state.level!==3||state.matchPointer!==ev.pointerId)return;
+  state.matchPointer=null;
+  finishMatchingDrag(ev.clientX,ev.clientY);
+});
+board.addEventListener("pointercancel", (ev) => {
+  if(state.matchPointer!==ev.pointerId)return;
+  state.matchPointer=null;
+  if(state.matching){state.matching.dragging=null;updateMatchingVisuals();}
+});
 // Click and keyboard both work; Pointer Events also allow dragging a fruit on touchscreens.
 board.addEventListener("click", (ev) => {
   const node = ev.target.closest("[data-gesture]");
   if (!node || node.dataset.gesture === "fruit") return;
+  if(state.level===3 && (node.dataset.gesture==='match-number'||node.dataset.gesture==='match-group') && ev.detail!==0)return;
   handleAction(node);
 });
 board.addEventListener("keydown", (ev) => {
@@ -590,7 +698,9 @@ async function startCamera() {
 function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 function gestureTargetAt(x,y){
   const node=document.elementFromPoint(x,y)?.closest?.("[data-gesture]");
-  return node && board.contains(node) && !node.hasAttribute("disabled") && node.getAttribute("aria-disabled")!=="true" ? node:null;
+  const usable=node && (board.contains(node) || (node.id==='nextBtn' && state.level===2 && state.answered))
+    && !node.hasAttribute("disabled") && node.getAttribute("aria-disabled")!=="true";
+  return usable?node:null;
 }
 function detectLoop(now) {
   const h=state.hand;
@@ -633,7 +743,7 @@ function processDwell(now) {
   if(handCursorSymbol) handCursorSymbol.textContent="☝️";
   const el=gestureTargetAt(h.cursorX,h.cursorY);
   const key=el ? `${el.dataset.gesture}:${el.dataset.value??el.dataset.fruit??""}` : "";
-  if(!key || state.answered) {h.hoverKey="";cursor.style.setProperty("--progress","0%");return;}
+  if(!key || (state.answered && !(state.level===2 && el?.dataset.gesture==='next'))) {h.hoverKey="";cursor.style.setProperty("--progress","0%");return;}
   if(key!==h.hoverKey){h.hoverKey=key;h.hoverSince=now;cursor.style.setProperty("--progress","0%");return;}
   const pct=Math.min(100,Math.max(0,((now-h.hoverSince)/1400)*100));
   cursor.style.setProperty("--progress",pct+"%");
@@ -650,16 +760,24 @@ function processPinch(ratio,now) {
   cursor.style.setProperty("--progress",h.pinched?"100%":"0%");
   if(closing) {
     h.pinched=true;
-    if(now<h.cooldownUntil||state.answered) return;
+    if(now<h.cooldownUntil || (state.answered && state.level!==2)) return;
     const el=gestureTargetAt(h.cursorX,h.cursorY);
-    if(el && el.dataset.gesture==="fruit" && state.level===2) {
+    if(el && el.dataset.gesture==="match-number" && state.level===3){
+      startMatchingDrag(Number(el.dataset.value),h.cursorX,h.cursorY);
+    } else if(el && el.dataset.gesture==="fruit" && state.level===2) {
       h.dragId=Number(el.dataset.fruit);$("carriedFruit").textContent=fruit();
     } else if (el) {
       handleAction(el);h.cooldownUntil=now+620;
     }
   }
+  if(state.level===3 && h.pinched && state.matching?.dragging){
+    moveMatchingDrag(h.cursorX,h.cursorY);
+  }
   if(opening) {
     h.pinched=false;
+    if(state.level===3 && state.matching?.dragging){
+      finishMatchingDrag(h.cursorX,h.cursorY);
+    }
     if(h.dragId!==null) {
       const id=h.dragId;h.dragId=null;$("carriedFruit").textContent="";
       if(insideBasket(h.cursorX,h.cursorY)) depositFruit(id);
@@ -668,6 +786,7 @@ function processPinch(ratio,now) {
   }
 }
 function updateMode(mode) {
+  if(state.matching?.dragging){state.matching.dragging=null;updateMatchingVisuals();}
   state.mode=mode;
   boardWrap?.classList.toggle("webcam-fruitless", mode!=="touch");
   document.querySelectorAll(".mode-btn").forEach(b=>{

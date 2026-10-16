@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#174e40">
   <meta name="description" content="Misi Bakul Nombor: latihan nombor 1–10 dengan pilihan kawalan tangan, sentuhan atau mouse untuk murid yang memerlukan sokongan numerasi.">
   <title>Misi Bakul Nombor — Jom Kira Buah!</title>
-  <link rel="stylesheet" href="styles.css?v=116">
-  <script defer src="game.js?v=116"></script>
+  <link rel="stylesheet" href="styles.css?v=118">
+  <script defer src="game.js?v=118"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Langkau ke permainan</a>
@@ -96,7 +96,7 @@
           <div class="feedback" id="feedback" role="status" aria-live="polite"><span class="feedback-icon">🌟</span><span id="feedbackText">Jom mulakan! Pilih jawapan kamu.</span></div>
           <div class="game-actions">
             <button type="button" class="secondary-button" id="retryBtn">🔄 Cuba soalan ini lagi</button>
-            <button type="button" class="primary-button" id="nextBtn" hidden>Soalan seterusnya →</button>
+            <button type="button" class="primary-button" id="nextBtn" data-gesture="next" hidden>Soalan seterusnya →</button>
           </div>
         </section>
 
@@ -105,7 +105,7 @@
           <div class="stat"><span class="stat-icon" aria-hidden="true">🎯</span><div><strong id="completedStat">0</strong><span>Soalan selesai</span></div></div>
           <div class="stat"><span class="stat-icon" aria-hidden="true">💡</span><div><strong id="hintsStat">0</strong><span>Soalan dengan bantuan</span></div></div>
         </section>
-        <footer class="footer">Dibangunkan untuk latihan numerasi berasaskan profil simulasi MBPK diskalkulia. <strong>Tiada video webcam atau nama murid disimpan.</strong> • Master akhir v1.17</footer>
+        <footer class="footer">Dibangunkan untuk latihan numerasi berasaskan profil simulasi MBPK diskalkulia. <strong>Tiada video webcam atau nama murid disimpan.</strong> • Master akhir v1.18</footer>
       </main>
     </div>
   </div>
@@ -115,8 +115,8 @@
     <form method="dialog" class="help-body"><button type="submit" class="close-help" aria-label="Tutup">✕</button>
       <h2 id="helpTitle">🌻 Cara bermain</h2>
       <p><strong>Misi 1 — Jom Kira:</strong> Kira buah yang dipaparkan, kemudian pilih simbol nombor yang betul.</p>
-      <p><strong>Misi 2 — Isi Bakul:</strong> Masukkan bilangan buah mengikut nombor. Sentuh buah, kemudian bakul, atau seret buah ke bakul. Permainan akan menyemak secara automatik apabila buah mencukupi atau melebihi sasaran.</p>
-      <p><strong>Misi 3 — Padankan:</strong> Pilih satu nombor di sebelah kiri, kemudian pilih kumpulan buah yang sama bilangannya di kanan. Garisan hijau menunjukkan padanan betul dan kekal pada skrin; garisan merah muncul sekejap untuk padanan salah. Julat 1–10 menggunakan dua set padanan, lima pasangan setiap set.</p>
+      <p><strong>Misi 2 — Isi Bakul:</strong> Masukkan bilangan buah mengikut nombor. Sentuh buah kemudian bakul, atau seret buah ke bakul. Apabila jawapan betul, tekan <strong>Soalan seterusnya</strong> untuk meneruskan.</p>
+      <p><strong>Misi 3 — Padankan:</strong> Tarik garisan dari nombor di sebelah kiri ke kumpulan buah di sebelah kanan seperti menulis dengan pen. Setiap garisan yang betul kekal dalam warna yang berbeza. Garisan salah berwarna merah dan hilang semula. Julat 1–10 menggunakan dua set padanan, lima pasangan setiap set.</p>
       <h3>🎥 Kawalan webcam</h3>
       <p><strong>Point & Select:</strong> Video webcam menjadi latar game. Halakan jari telunjuk ke pilihan, tahan hingga bulatan penunjuk penuh. Untuk Misi 2, pilih buah dahulu, kemudian halakan ke bakul.</p>
       <p><strong>Pinch & Drag:</strong> Cantumkan ibu jari dan telunjuk untuk memilih. Dalam Misi 2, cubit di atas buah, bawa ke bakul, lalu lepaskan. Anda juga boleh memilih buah dan kemudian mencubit di atas bakul.</p>
