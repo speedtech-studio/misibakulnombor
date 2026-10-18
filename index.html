@@ -137,6 +137,16 @@ body.camera-active .bg{visibility:hidden;opacity:0}
 #hc{position:fixed;left:0;top:0;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;border:5px solid #fff;background:conic-gradient(#22c55e calc(var(--p,0)*1turn),#f9731699 0);display:none;place-items:center;font-size:28px;z-index:100;pointer-events:none;box-shadow:0 4px 12px #0005}
 #hc.pin{transform:scale(.75);border-color:#22c55e}
 #cmsg{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:#fff;border:4px solid #ffb02e;border-radius:20px;padding:8px 16px;font-weight:800;z-index:60;display:none;max-width:90vw;text-align:center}
+/* Dua pilihan julat, mudah ditekan dengan sentuhan atau Point & Select. */
+#bR[aria-expanded="true"]{background:#ffe09a;color:#5b3a00}
+.range-menu{position:absolute;top:54px;right:52px;z-index:29;width:min(250px,calc(100vw - 22px));padding:14px;border:3px solid #e6aa42;border-radius:20px;background:#fffdf4;box-shadow:0 10px 30px #0003;display:flex;flex-direction:column;align-items:stretch;gap:10px;text-align:center}
+.range-menu[hidden]{display:none!important}
+.range-menu strong{font-size:1.1rem;color:#1f3d2b}
+.range-menu .range-choice{width:100%;height:auto;flex:0 0 auto;font-weight:950;font-size:1.35rem;background:#eef8e9;color:#1f4c2b;border:3px solid #a8d49c;border-radius:16px;min-height:58px;padding:9px 15px;box-shadow:0 3px 0 #b5cfa7}
+.range-menu .range-choice.active{background:#ffe7a5;border-color:#efb842;color:#714a03}
+.range-menu .range-choice:focus-visible{outline:4px solid #f59e0b;outline-offset:2px}
+.range-menu small{color:#537061;font-weight:700;line-height:1.35}
+/* Nombor pada anak tangga dibuang; bentuk tangga kekal. */
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body>
 <div class="bg"><div class="sun"></div><div class="cl" style="top:9%;animation-duration:50s"></div><div class="cl" style="top:22%;animation-duration:70s;animation-delay:-30s;transform:scale(.7)"></div><div class="hill h1"></div><div class="hill h2"></div><div class="hill h3"></div><div class="fly" style="top:30%;left:10%">🦋</div><div class="fly" style="top:45%;left:55%;animation-delay:-6s">🐦</div></div>
@@ -147,7 +157,7 @@ body.camera-active .bg{visibility:hidden;opacity:0}
 <section class="scr" id="sEnd"><div class="logo" id="eT"></div><div class="big" id="eH"></div><div class="sub" id="eS"></div><div class="row"><button class="btn" id="eAgain">▶ Main lagi</button><button class="btn g" id="eChar">Tukar watak</button></div></section>
 
 <div id="game"><div class="hud"><div class="row" style="gap:6px"><button class="mc" data-m="0">1 · Kira</button><button class="mc" data-m="1">2 · Bakul</button><button class="mc" data-m="2">3 · Susun</button></div><div class="dots" id="dots"></div><div class="chip" id="stars" style="margin-right:150px">⭐ 0</div></div><div class="play" id="play"></div><div class="hrow"><div id="hero"></div><div class="bub" id="bub"></div></div></div>
-<div class="top" id="top"><button id="bV" title="Suara">🔊</button><button id="bR" title="Julat nombor">⚙️</button><button id="bF" title="Skrin penuh">⛶</button></div>
+<div class="top" id="top"><button id="bV" title="Suara">🔊</button><button id="bR" title="Pilih julat nombor" aria-label="Pilih julat nombor" aria-haspopup="true" aria-expanded="false" aria-controls="rangeMenu">⚙️</button><button id="bF" title="Skrin penuh">⛶</button><div id="rangeMenu" class="range-menu" role="group" aria-label="Pilihan julat nombor" hidden><strong>🔢 Pilih Nombor</strong><button class="range-choice active" type="button" data-range="5" aria-pressed="true">0 – 5</button><button class="range-choice" type="button" data-range="10" aria-pressed="false">0 – 10</button><small>Pilih satu untuk mula semula misi semasa.</small></div></div>
 <div id="ban"><div><span id="be"></span><h2 id="bt"></h2></div></div>
 
 <video id="cv" muted autoplay playsinline aria-hidden="true"></video><div id="camStars" aria-hidden="true"></div><button id="bCam" type="button" aria-label="Hidupkan webcam" aria-pressed="false" title="Hidupkan webcam"><span class="cam-icon" aria-hidden="true">📷</span><span class="cam-label">KAMERA</span></button><div id="hc">👆</div><div id="cmsg"></div>
@@ -156,7 +166,7 @@ const $=s=>document.querySelector(s),R=(a,b)=>a+Math.floor(Math.random()*(b-a+1)
 const SK=['#ffd9b8','#e9b98c','#b97d56'],FR=['🍎','🍌','🍊','🍇','🍓','🍉'],COL=['#3b82f6','#a855f7','#f59e0b','#10b981','#ec4899'];
 const OUT={l:[{n:'Baju T',t:'tee',c:'#3b82f6'},{n:'Baju Melayu',t:'melayu',c:'#16a34a'},{n:'Uniform',t:'uniform',c:'#fff',c2:'#2563eb'},{n:'Hero',t:'hero',c:'#ef4444',c2:'#b91c1c'}],
 p:[{n:'Baju T',t:'tee',c:'#ec4899'},{n:'Baju Kurung',t:'kurung',c:'#a855f7'},{n:'Uniform',t:'uniform',c:'#fff',c2:'#ef4444'},{n:'Hero',t:'hero',c:'#f59e0b',c2:'#d97706'}]};
-const S={name:'Kawan',a:0,acc:[0,0,0,0],tab:0,range:5,stars:0,voice:1,m:0,r:0,last:0,lock:0};
+const S={name:'Kawan',a:0,acc:[0,0,0,0],tab:0,range:5,stars:0,voice:1,m:0,r:0,last:-1,lock:0};
 const MS=[['🔢','Misi 1 · Jom Kira!'],['🧺','Misi 2 · Isi Bakul!'],['🧺','Misi 3 · Susun Bakul!']];
 const PR=['Hebat, {n}! 🎉','Pandainya {n}! ⭐','Wah, betul! Bagus {n}!','Yeay! Tepat sekali! 🌟'];
 let ac;function tone(f,d=.14,t='sine',w=0){try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain(),T=ac.currentTime+w;o.type=t;o.frequency.value=f;g.gain.setValueAtTime(.12,T);g.gain.exponentialRampToValueAtTime(.001,T+d);o.connect(g);g.connect(ac.destination);o.start(T);o.stop(T+d)}catch(e){}}
@@ -240,13 +250,13 @@ function say(t,v){const b=$('#bub');b.textContent=t;b.style.animation='none';b.o
 function hud(){$('#stars').textContent='⭐ '+S.stars;document.querySelectorAll('.mc').forEach(b=>b.classList.toggle('on',+b.dataset.m==S.m))}
 function dots(d,t){$('#dots').innerHTML=Array.from({length:t},(_,i)=>`<span class="${i<d?'d':i==d?'c':''}"></span>`).join('')}
 function conf(){const E=['⭐','🎉','🍎','🍓','✨','🍊','🎈'];for(let i=0;i<30;i++){const e=document.createElement('div');e.className='cf';e.textContent=E[R(0,6)];e.style.cssText=`left:${R(0,100)}vw;--x:${R(-120,120)}px;--r:${R(-540,540)}deg;animation-delay:${Math.random()*.4}s`;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}}
-function startM(m){S.m=m;S.r=0;S.lock=0;hud();$('#be').textContent=MS[m][0];$('#bt').textContent=MS[m][1];$('#ban').classList.add('on');play.innerHTML='';sfx.pop(4);setTimeout(()=>{$('#ban').classList.remove('on');next()},1500)}
+function startM(m){if(typeof closeRangeMenu==='function')closeRangeMenu();S.m=m;S.r=0;S.lock=0;hud();$('#be').textContent=MS[m][0];$('#bt').textContent=MS[m][1];$('#ban').classList.add('on');play.innerHTML='';sfx.pop(4);setTimeout(()=>{$('#ban').classList.remove('on');next()},1500)}
 function next(){S.lock=0;const tot=S.m==2?1:5;if(S.r>=tot){if(S.m<2){startM(S.m+1)}else end();return}dots(S.r,S.m==2?2:5);[m1,m2,m3][S.m]()}
 function win(){if(S.lock)return;S.lock=1;S.stars++;hud();sfx.ok();conf();act('cheer',1900);say(PR[R(0,3)].replace('{n}',S.name),1);setTimeout(()=>{S.r++;next()},2200)}
 function bad(el,msg){if(el){el.classList.add('no');setTimeout(()=>el.classList.remove('no'),450)}sfx.bad();act('sad',500);say(msg,1)}
-function pickN(){let n;do n=R(1,S.range);while(n==S.last&&S.range>1);return S.last=n}
-function m1(){const n=pickN(),fr=FR[R(0,5)],all=Array.from({length:S.range},(_,i)=>i+1).filter(x=>x!=n),o=SH([n,...SH(all).slice(0,3)]);
-play.innerHTML=`<div class="col"><div class="fr">${Array.from({length:n},(_,i)=>`<button class="fx" style="animation-delay:${i*.09}s" aria-label="buah">${fr}<b></b></button>`).join('')}</div><div class="cnt" id="cnt">Sudah kira: 0</div><div class="nums">${o.map(v=>`<button class="nb" data-v="${v}">${v}</button>`).join('')}</div></div>`;
+function pickN(){let n;do n=R(0,S.range);while(n==S.last&&S.range>0);return S.last=n}
+function m1(){const n=pickN(),fr=FR[R(0,5)],all=Array.from({length:S.range+1},(_,i)=>i).filter(x=>x!=n),o=SH([n,...SH(all).slice(0,3)]);
+play.innerHTML=`<div class="col"><div class="fr">${n===0?'<span class="cnt" aria-label="Tiada buah">Tiada buah · 0</span>':''}${Array.from({length:n},(_,i)=>`<button class="fx" style="animation-delay:${i*.09}s" aria-label="buah">${fr}<b></b></button>`).join('')}</div><div class="cnt" id="cnt">Sudah kira: 0</div><div class="nums">${o.map(v=>`<button class="nb" data-v="${v}">${v}</button>`).join('')}</div></div>`;
 let k=0;play.querySelectorAll('.fx').forEach(b=>b.onclick=()=>{if(S.lock||b.classList.contains('cn'))return;b.classList.add('cn');b.lastChild.textContent=++k;$('#cnt').textContent='Sudah kira: '+k;sfx.pop(k);speak(String(k))});
 play.querySelectorAll('.nb').forEach(b=>b.onclick=()=>{if(S.lock)return;+b.dataset.v==n?win():bad(b,'Hampir! Sentuh setiap buah untuk mengira, kemudian cuba lagi.')});
 say(S.r?'Berapa biji buah? Kira dulu ya!':`Hai ${S.name}! Sentuh setiap buah untuk mengira, kemudian pilih nombor yang betul.`,1)}
@@ -258,29 +268,38 @@ const put=el=>{el.classList.add('gone');inb.push(el.dataset.i);upd();sfx.pop(inb
 play.querySelectorAll('.tf').forEach(el=>{let sx,sy,mv,dr;el.onpointerdown=e=>{if(S.lock)return;dr=1;mv=0;sx=e.clientX;sy=e.clientY;el.setPointerCapture(e.pointerId);el.classList.add('drg')};
 el.onpointermove=e=>{if(!dr)return;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>8)mv=1;if(mv)el.style.translate=`${dx}px ${dy}px`};
 el.onpointerup=e=>{if(!dr)return;dr=0;el.classList.remove('drg');const r=$('#bkt').getBoundingClientRect();const ok=!mv||(e.clientX>r.left-20&&e.clientX<r.right+20&&e.clientY>r.top-30&&e.clientY<r.bottom+10);el.style.translate='';if(ok)put(el)}});
-say(S.r?`Ambil ${n} biji buah, kemudian tekan Hantar!`:`Tolong ambil ${n} biji buah dari pokok dan letak dalam bakul! Bila siap, tekan Hantar.`,1)}
+say(n===0?'Sifar! Biarkan bakul kosong, kemudian tekan Hantar.':S.r?`Ambil ${n} biji buah, kemudian tekan Hantar!`:`Tolong ambil ${n} biji buah dari pokok dan letak dalam bakul! Bila siap, tekan Hantar.`,1)}
 const NW=['Satu','Dua','Tiga','Empat','Lima','Enam','Tujuh','Lapan','Sembilan','Sepuluh'];
 function drag(el,drop,tap){let sx,sy,mv,dr;el.onpointerdown=e=>{if(S.lock)return;dr=1;mv=0;sx=e.clientX;sy=e.clientY;el.setPointerCapture(e.pointerId);el.classList.add('drg')};
 el.onpointermove=e=>{if(!dr)return;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>8)mv=1;if(mv)el.style.translate=`${dx}px ${dy}px`};
 el.onpointerup=e=>{if(!dr)return;dr=0;el.classList.remove('drg');el.style.translate='';if(mv){el.style.visibility='hidden';const t=document.elementFromPoint(e.clientX,e.clientY);el.style.visibility='';drop(t)}else tap()}}
-const bk=(v,i,n,l,a=1)=>`<div class="b3" data-v="${v}" data-i="${i}">${l?`<div class="bl">Bakul ${l}</div>`:''}<div class="bi">${a?'🍎'.repeat(n):''}</div><div class="bw"><span class="bb">🧺</span><b class="bn">${v}</b></div><div class="bd">${Array.from({length:v},(_,k)=>`<i class="${k<n?'f':''}"></i>`).join('')}</div></div>`;
+const bk=(v,i,n,l,a=1)=>`<div class="b3" data-v="${v}" data-i="${i}">${l?`<div class="bl">Bakul ${l}</div>`:''}<div class="bi">${a?(n===0?'Kosong':'🍎'.repeat(n)):''}</div><div class="bw"><span class="bb">🧺</span><b class="bn">${v}</b></div><div class="bd">${Array.from({length:v},(_,k)=>`<i class="${k<n?'f':''}"></i>`).join('')}</div></div>`;
 function m3(){ph2(pickTg(null),1)}
-const pickTg=prev=>{const mx=Math.min(S.range,7);let t;for(let k=0;k<20;k++){t=SH(Array.from({length:mx},(_,i)=>i+1)).slice(0,3);if(!prev||[...t].sort().join()!=[...prev].sort().join())break}return t};
+const pickTg=prev=>{const mx=S.range;let t;for(let k=0;k<20;k++){t=SH(Array.from({length:mx+1},(_,i)=>i)).slice(0,3);if(!prev||[...t].sort().join()!=[...prev].sort().join())break}return t};
 function ph2(tg,f){const dir=f==2?-1:1,ord=[...tg].sort((a,b)=>(a-b)*dir),HG=dir>0?[24,52,80]:[80,52,24];let sl=[null,null,null],tray=SH(tg),sel=null;dots(f-1,2);
 play.innerHTML=`<div class="col f3"><div class="dir">${dir>0?'⬈ Menaik · Sikit ➜ Banyak':'⬊ Menurun · Banyak ➜ Sikit'}</div><div class="stair"><div class="arw ${dir>0?'':'dn'}"></div><div class="bks" id="sl"></div></div><div class="bks" id="tr"></div></div>`;
 const B=v=>bk(v,0,v,'',1);
-const paint=()=>{$('#sl').innerHTML=sl.map((v,p)=>`<div class="sl st" data-p="${p}"><div class="zn">${v?B(v):''}</div><div class="blk" style="height:${HG[p]}px"><b>${p+1}</b></div></div>`).join('');$('#tr').innerHTML=tray.map(B).join('');
+const paint=()=>{$('#sl').innerHTML=sl.map((v,p)=>`<div class="sl st" data-p="${p}"><div class="zn">${v!==null?B(v):''}</div><div class="blk" style="height:${HG[p]}px" aria-label="Anak tangga ${p+1}"></div></div>`).join('');$('#tr').innerHTML=tray.map(B).join('');
 $('#tr').querySelectorAll('.b3').forEach(el=>{const v=+el.dataset.v;if(v==sel)el.classList.add('pk');drag(el,t=>{const s=t&&t.closest('.sl');if(s)place(v,+s.dataset.p)},()=>{sel=sel==v?null:v;paint();sfx.pop(1)})});
-$('#sl').querySelectorAll('.sl').forEach(s=>s.onclick=()=>{if(S.lock)return;const p=+s.dataset.p;if(sel!=null)place(sel,p);else if(sl[p]){tray.push(sl[p]);sl[p]=null;paint()}})};
-const place=(v,p)=>{sl=sl.map(x=>x==v?null:x);if(sl[p])tray.push(sl[p]);sl[p]=v;tray=tray.filter(x=>x!=v);sel=null;sfx.pop(p+1);paint();
-if(sl.every(Boolean)){if(sl.every((x,i)=>x==ord[i])){if(f<2){S.lock=1;sfx.ok();conf();act('cheer',1500);say(PR[R(0,3)].replace('{n}',S.name),1);setTimeout(()=>{S.lock=0;ph2(pickTg(tg),2)},2000)}else win()}
+$('#sl').querySelectorAll('.sl').forEach(s=>s.onclick=()=>{if(S.lock)return;const p=+s.dataset.p;if(sel!=null)place(sel,p);else if(sl[p]!==null){tray.push(sl[p]);sl[p]=null;paint()}})};
+const place=(v,p)=>{sl=sl.map(x=>x==v?null:x);if(sl[p]!==null)tray.push(sl[p]);sl[p]=v;tray=tray.filter(x=>x!=v);sel=null;sfx.pop(p+1);paint();
+if(sl.every(x=>x!==null)){if(sl.every((x,i)=>x==ord[i])){if(f<2){S.lock=1;sfx.ok();conf();act('cheer',1500);say(PR[R(0,3)].replace('{n}',S.name),1);setTimeout(()=>{S.lock=0;ph2(pickTg(tg),2)},2000)}else win()}
 else{bad(null,dir>0?'Belum betul. Kira titik dan epal. Mana yang paling sedikit? Letak di tangga 1.':'Belum betul. Mana yang paling banyak? Letak di tangga 1. Kira titik ya!');S.lock=1;setTimeout(()=>{S.lock=0;sl=[null,null,null];tray=SH(tg);paint()},1400)}}};
 paint();say(f==1?`Hai ${S.name}! Naik bukit! Letak bakul PALING SEDIKIT epal di tangga 1, kemudian tangga 2, dan PALING BANYAK di tangga 3.`:'Sekarang turun bukit! Letak bakul PALING BANYAK epal di tangga 1, kemudian tangga 2, dan PALING SEDIKIT di tangga 3.',1)}
 function end(){show('sEnd');$('#eT').textContent=`Tahniah, ${S.name}! 🎉`;$('#eH').innerHTML=hero(S,'cheer');$('#eS').textContent=`Kamu dapat ⭐ ${S.stars} bintang!`;conf();sfx.ok();speak(`Tahniah ${S.name}! Kamu hebat!`);setTimeout(conf,1400)}
 $('#eAgain').onclick=()=>{S.stars=0;show('game');$('#game').classList.add('on');$('#hero').innerHTML=hero(S);startM(0)};$('#eChar').onclick=gen;
 document.querySelectorAll('.mc').forEach(b=>b.onclick=()=>startM(+b.dataset.m));
 $('#bV').onclick=e=>{S.voice=!S.voice;e.target.textContent=S.voice?'🔊':'🔇';if(!S.voice)try{speechSynthesis.cancel()}catch(x){}};
-$('#bR').onclick=()=>{S.range=S.range==3?5:S.range==5?10:3;say(`Nombor 1 hingga ${S.range}. Jom mula semula!`,1);setTimeout(()=>startM(S.m),1800)};
+const rangeMenu=$('#rangeMenu'),rangeGear=$('#bR');
+function closeRangeMenu(){rangeMenu.hidden=true;rangeGear.setAttribute('aria-expanded','false')}
+rangeGear.onclick=()=>{const opened=rangeMenu.hidden;rangeMenu.hidden=!opened;rangeGear.setAttribute('aria-expanded',String(opened))};
+rangeMenu.querySelectorAll('.range-choice').forEach(btn=>btn.onclick=()=>{
+  const chosen=+btn.dataset.range;S.range=chosen;S.last=-1;
+  rangeMenu.querySelectorAll('.range-choice').forEach(b=>{const picked=+b.dataset.range===chosen;b.classList.toggle('active',picked);b.setAttribute('aria-pressed',String(picked))});
+  closeRangeMenu();say(`Julat nombor sifar hingga ${chosen}. Jom mula semula!`,1);startM(S.m);
+});
+document.addEventListener('pointerdown',e=>{if(!rangeMenu.hidden&&!rangeMenu.contains(e.target)&&e.target!==rangeGear)closeRangeMenu()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRangeMenu()});
 $('#bF').onclick=()=>{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen?.()};
 
 (()=>{const spc=Element.prototype.setPointerCapture;Element.prototype.setPointerCapture=function(i){if(i===99)return;try{spc.call(this,i)}catch(e){}};
