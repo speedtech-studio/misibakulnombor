@@ -1,0 +1,26 @@
+MISI BAKUL NOMBOR - UPGRADE KAMERA BINTANG
+Berdasarkan repository: ysminmelssa-blip/MISI.BAKUL.NOMBOR
+
+APA YANG BERUBAH
+1. Butang kamera bahagian kanan bawah membesar dan bertukar bentuk bintang.
+2. Apabila webcam diaktifkan, video memenuhi latar permainan; muka bukan lagi pada kotak kecil.
+3. Bintang warna-warni muncul dan mengikuti penunjuk jari yang sudah dikesan MediaPipe; ia hilang selepas sekejap.
+4. Kod Misi 1, Misi 2, Misi 3, pilihan julat dan gesture asal tidak digantikan.
+
+CARA PASANG (2 FAIL SAHAJA)
+1. Buka fail JANA_INDEX_TERKINI.html dalam browser dan tekan 'Jana index.html daripada GitHub'.
+   Jika browser tidak dapat memuat turun fail GitHub, pilih index.html asal yang dimuat turun dari repository.
+2. Browser akan memuat turun index.html baharu yang mempunyai satu baris script tambahan.
+3. Buka repository GitHub dan upload kedua-dua fail berikut di direktori utama (root):
+      index.html (fail baharu daripada langkah 2)
+      kamera-bintang.js (fail di dalam ZIP ini)
+4. Gantikan index.html lama dan tunggu GitHub Pages mengemas kini laman.
+5. Refresh laman (Ctrl+Shift+R pada komputer) dan beri izin kamera apabila diminta.
+
+NOTA
+- Fail JANA_INDEX_TERKINI.html hanya alat untuk menghasilkan index.html baharu,
+  JANGAN upload alat itu ke GitHub Pages.
+- Ini bukan sambungan aplikasi yang berjalan sendiri tanpa index.html.
+- Kamera hanya dihidupkan atas izin pengguna. Tiada rakaman kamera dihantar oleh fail tambahan.
+- Pastikan akses internet untuk MediaPipe asal.
+- Jika kamera tidak berfungsi pada peranti tertentu, mod sentuhan/mouse asal kekal tersedia.
